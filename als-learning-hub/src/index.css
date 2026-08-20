@@ -1,0 +1,74 @@
+/* =========================================================
+   ALS — Alternative Learning System
+   Color tokens, based on the ALS logo palette
+   Tailwind v4 (CSS-first config)
+   ========================================================= */
+
+@import "tailwindcss";
+@theme {
+    /* ---- Brand colors (from logo) ----
+     These generate utilities automatically:
+     bg-primary / text-primary / border-primary, etc. */
+    --color-primary: rgba(20, 30, 180, 1);
+    /* S — blue */
+    --color-primary-hover: rgba(20, 30, 180, 0.85);
+    --color-accent: rgba(243, 41, 55, 1);
+    /* A — red */
+    --color-accent-hover: rgba(243, 41, 55, 0.85);
+    --color-secondary: rgba(18, 158, 9, 1);
+    /* L — green */
+    --color-secondary-hover: rgba(18, 158, 9, 0.85);
+    --color-highlight: rgba(97, 146, 196, 1);
+    /* dot — highlight / links / focus */
+    --color-highlight-soft: rgba(97, 146, 196, 0.15);
+    /* ---- Text ---- */
+    --color-ink: rgba(72, 72, 72, 1);
+    /* wordmark gray */
+    --color-ink-soft: rgba(72, 72, 72, 0.75);
+    --color-ink-muted: rgba(72, 72, 72, 0.5);
+    --color-ink-on-dark: #F5F6F8;
+    /* ---- Surfaces / neutrals ---- */
+    --color-bg: #F5F6F8;
+    --color-bg-alt: #E9EBF0;
+    --color-surface: #FFFFFF;
+    --color-border: rgba(72, 72, 72, 0.15);
+    /* ---- Soft tints for badges/chips ---- */
+    --color-tint-blue: rgba(20, 30, 180, 0.10);
+    --color-tint-red: rgba(243, 41, 55, 0.10);
+    --color-tint-green: rgba(18, 158, 9, 0.10);
+    /* ---- Shape / elevation (generates rounded-*, shadow-*) ---- */
+    --radius-DEFAULT: 6px;
+    --shadow-DEFAULT: 0 1px 0 rgba(72, 72, 72, 0.05), 0 6px 16px -8px rgba(72, 72, 72, 0.18);
+}
+
+
+/* Quick reference — subject/tag color rotation, in brand order.
+   Not a Tailwind color scale, just handy raw values for JS logic. */
+
+:root {
+    --subject-color-1: var(--color-primary);
+    --subject-color-2: var(--color-accent);
+    --subject-color-3: var(--color-secondary);
+    --subject-color-4: var(--color-highlight);
+}
+
+
+/* ---- Base layer ---- */
+
+@layer base {
+    body {
+        background: var(--color-bg);
+        color: var(--color-ink);
+    }
+    a {
+        color: var(--color-highlight);
+    }
+     ::selection {
+        background: var(--color-highlight-soft);
+        color: var(--color-ink);
+    }
+     :focus-visible {
+        outline: 2.5px solid var(--color-highlight);
+        outline-offset: 2px;
+    }
+}
