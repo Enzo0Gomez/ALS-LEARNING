@@ -1,21 +1,35 @@
 import alsLogo from '../assets/picture/logo_als.jpg'
 
-function Navbar() {
+function Navbar({ activePage, onNavigate }) {
+  const navigationItems = [
+    { label: 'Home', page: 'home' },
+    { label: 'About', page: 'about' },
+    { label: 'Teacher', page: 'teacher' },
+  ]
+
   return (
     <header className="border-b border-border bg-surface">
       <nav
         aria-label="Main navigation"
         className="mx-auto flex min-h-20 max-w-7xl items-center justify-between px-6 lg:px-8"
       >
-        <a href="#home" className="flex items-center" aria-label="ALS Learning Hub home">
-          <img src={alsLogo} alt="ALS Learning Hub" className="h-12 w-auto object-contain" />
-        </a>
-
+        <button type="button" onClick={() => onNavigate('home')} className="flex items-center gap-2" aria-label="ALS Learning Hub home">
+          <img src={alsLogo} alt="" className="h-20 w-20 object-contain" />
+          <h1 className="text-xl font-bold text-primary">Learning Materials</h1>
+        </button>
         <div className="flex items-center gap-3 sm:gap-6">
           <div className="hidden items-center gap-6 text-sm font-medium text-ink sm:flex">
-            <a href="#home" className="transition-colors hover:text-primary">Home</a>
-            <a href="#about" className="transition-colors hover:text-primary">About</a>
-            <a href="#teacher" className="transition-colors hover:text-primary">Teacher</a>
+            {navigationItems.map((item) => (
+              <button
+                key={item.page}
+                type="button"
+                onClick={() => onNavigate(item.page)}
+                aria-current={activePage === item.page ? 'page' : undefined}
+                className={`transition-colors hover:text-primary ${activePage === item.page ? 'font-bold text-primary' : ''}`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
           <a
