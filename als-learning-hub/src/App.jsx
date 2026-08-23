@@ -1,73 +1,77 @@
-import { useEffect, useState } from 'react'
+import { useState } from "react";
 
-import Navbar from './components/Navbar'
-import Homepage from './components/Homepage'
-import Aboutpage from './components/Aboutpage'
-import Teacher from './components/Teacher'
-import Login from './components/Login'
-import Signup from './components/Signup'
-import TeacherDashboard from './components/TeacherDashboard'
-import { supabase } from './lib/supabase'
+import Navbar from "./components/Navbar";
+import Homepage from "./components/Homepage";
+import Aboutpage from "./components/Aboutpage";
+import Teacher from "./components/Teacher";
+import Login from "./components/Login";
+import Signup from "./components/Signup";
+
+import AdminDashboard from "./components/Admin/AdminDashboard";
+import TeacherDashboard from "./components/Teacher/TeacherDashboard";
+import StudentDashboard from "./components/Student/StudentDashboard";
 
 function App() {
-  const [activePage, setActivePage] = useState('home')
+  const [page, setPage] = useState("home");
+  const [user, setUser] = useState(null);
 
-  // Test Supabase connection
-  useEffect(() => {
-    async function testConnection() {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .limit(5)
+  const handleAdminLogin = (profile) => {
+    setUser(profile);
+    setPage("admin-dashboard");
+  };
 
-      console.log('Supabase data:', data)
-      console.log('Supabase error:', error)
-    }
+  const handleTeacherLogin = (profile) => {
+    setUser(profile);
+    setPage("teacher-dashboard");
+  };
 
-    testConnection()
-  }, [])
+  const handleStudentLogin = (profile) => {
+    setUser(profile);
+    setPage("student-dashboard");
+  };
 
   return (
     <>
-      {/* Navbar - always visible */}
-      <Navbar
-        activePage={activePage}
-        onNavigate={setActivePage}
-      />
+      <Navbar onNavigate={setPage} />
 
-      {/* Home */}
-      {activePage === 'home' && (
-        <Homepage onNavigate={setActivePage} />
+      {page === "home" && (
+        <Homepage />
       )}
 
-      {/* About */}
-      {activePage === 'about' && (
+      {page === "about" && (
         <Aboutpage />
       )}
 
-      {/* Teacher */}
-      {activePage === 'teacher' && (
+      {page === "teacher" && (
         <Teacher />
       )}
 
-      {/* Login */}
-      {activePage === 'login' && (
+      {page === "login" && (
         <Login
-          onSignUp={() => setActivePage('signup')}
+          onSignUp={() => setPage("signup")}
+          onAdminLogin={handleAdminLogin}
+          onTeacherLogin={handleTeacherLogin}
+          onStudentLogin={handleStudentLogin}
         />
       )}
 
-      {/* Student Sign Up */}
-      {activePage === 'signup' && (
-        <Signup
-          onLogin={() => setActivePage('login')}
-        />
+      {page === "signup" && (
+        <Signup onLogin={() => setPage("login")} />
       )}
-      {activePage === 'teacher-dashboard' && (
-        <TeacherDashboard onNavigate={setActivePage} />
+
+      {page === "admin-dashboard" && (
+        <AdminDashboard user={user} />
+      )}
+
+      {page === "teacher-dashboard" && (
+        <TeacherDashboard user={user} />
+      )}
+
+      {page === "student-dashboard" && (
+        <StudentDashboard user={user} />
       )}
     </>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -1,15 +1,49 @@
 import { useState } from "react";
+import { supabase } from "../lib/supabase";
+
+const EDUCATION_LEVELS = [
+    {
+        label: "Basic Literacy",
+        values: ["basic_literacy", "BasicLiteracy", "Basic Literacy"],
+    },
+    {
+        label: "Elementary",
+        values: ["elementary", "Elementary"],
+    },
+    {
+        label: "Junior High School",
+        values: [
+            "junior_high_school",
+            "JuniorHighSchool",
+            "Junior High School",
+        ],
+    },
+    {
+        label: "Senior High School",
+        values: [
+            "senior_high_school",
+            "SeniorHighSchool",
+            "Senior High School",
+        ],
+    },
+];
 
 function Signup({ onLogin }) {
     const [formData, setFormData] = useState({
         lrn: "",
         name: "",
+        email: "",
         username: "",
+        educationLevel: "",
         password: "",
         confirmPassword: "",
     });
 
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [success, setSuccess] = useState(false);
+    const [needsEmailConfirmation, setNeedsEmailConfirmation] =
+        useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -20,17 +54,132 @@ function Signup({ onLogin }) {
         setError("");
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        setError("");
 
         if (formData.password !== formData.confirmPassword) {
             setError("Passwords do not match.");
             return;
         }
 
-        console.log(formData);
+        if (formData.password.length < 6) {
+            setError("Password must be at least 6 characters long.");
+            return;
+        }
 
-        // Supabase student registration will be connected here later.
+        const selectedLevel = EDUCATION_LEVELS.find(
+            (level) => level.label === formData.educationLevel
+        );
+
+        if (!selectedLevel) {
+            setError("Please select your education level.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // Split the full name for the profiles table
+            const nameParts = formData.name.trim().split(/\s+/);
+            const firstName = nameParts[0] || "";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
+            // 1. Create the auth user through Supabase Authentication
+            const signUpResult = await supabase.auth.signUp({
+                email: formData.email.trim(),
+                password: formData.password,
+                options: {
+                    data: {
+                        username: formData.username.trim(),
+                        lrn: formData.lrn.trim(),
+                        role: "student",
+                    },
+                },
+            });
+            const data = signUpResult.data;
+            const signUpError = signUpResult.error;
+
+            if (signUpError) {
+                throw signUpError;
+            }
+
+            if (!data.user) {
+                throw new Error(
+                    "Registration failed. Please try again."
+                );
+            }
+
+            const userId = data.user.id;
+
+            // 2. Create the student profile row
+            const profileResult = await supabase
+                .from("profiles")
+                .insert({
+                    id: userId,
+                    first_name: firstName,
+                    last_name: lastName,
+                    role: "student",
+                    username: formData.username.trim(),
+                });
+            const profileError = profileResult.error;
+
+            if (profileError) {
+                if (profileError.code === "23505") {
+                    throw new Error(
+                        "That username is already taken. Please choose another one."
+                    );
+                }
+                throw new Error(
+                    "Account created but we couldn't set up your student profile. Please contact your teacher."
+                );
+            }
+
+            // 3. Create the students row (education level + LRN)
+            // Try each known spelling of the enum value until one
+            // matches the database definition (code 22P02 = invalid
+            // enum input means we simply try the next candidate).
+            let studentError = null;
+
+            for (const levelValue of selectedLevel.values) {
+                const studentResult = await supabase
+                    .from("students")
+                    .insert({
+                        id: userId,
+                        education_level: levelValue,
+                        learner_id: formData.lrn.trim(),
+                    });
+
+                studentError = studentResult.error;
+
+                if (!studentError) break;
+
+                if (studentError.code === "22P02") continue;
+
+                break;
+            }
+
+            if (studentError) {
+                if (studentError.code === "23505") {
+                    throw new Error(
+                        "That Learner Reference Number (LRN) is already registered."
+                    );
+                }
+                throw new Error(
+                    "Account created but we couldn't save your learner information. Please contact your teacher."
+                );
+            }
+
+            // If email confirmation is enabled, no session is returned
+            setNeedsEmailConfirmation(!data.session);
+            setSuccess(true);
+        } catch (err) {
+            console.error("Signup error:", err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -80,145 +229,231 @@ function Signup({ onLogin }) {
                             </p>
                         </div>
 
-                        <form
-                            onSubmit={handleSubmit}
-                            className="space-y-5"
-                        >
+                        {success ? (
 
-                            {/* LRN */}
-                            <div>
-                                <label
-                                    htmlFor="lrn"
-                                    className="block mb-2 text-sm font-semibold text-ink"
+                            /* Success Panel */
+                            <div className="p-8 text-center border rounded-xl border-border bg-surface">
+                                <h3 className="text-xl font-bold text-ink">
+                                    Account created!
+                                </h3>
+
+                                <p className="mt-3 text-sm leading-6 text-ink-soft">
+                                    {needsEmailConfirmation
+                                        ? "Please check your email and click the verification link before logging in."
+                                        : "Your student account has been created successfully."}
+                                </p>
+
+                                <button
+                                    type="button"
+                                    onClick={onLogin}
+                                    className="w-full mt-6 rounded-xl bg-primary px-5 py-3.5 font-semibold text-white transition hover:bg-primary-hover"
                                 >
-                                    Learner Reference Number (LRN)
-                                </label>
-
-                                <input
-                                    id="lrn"
-                                    name="lrn"
-                                    type="text"
-                                    value={formData.lrn}
-                                    onChange={handleChange}
-                                    placeholder="Enter your LRN"
-                                    required
-                                    className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
-                                />
+                                    Go to Login
+                                </button>
                             </div>
 
-                            {/* Name */}
-                            <div>
-                                <label
-                                    htmlFor="name"
-                                    className="block mb-2 text-sm font-semibold text-ink"
+                        ) : (
+
+                            <>
+                                <form
+                                    onSubmit={handleSubmit}
+                                    className="space-y-5"
                                 >
-                                    Full Name
-                                </label>
 
-                                <input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    placeholder="Enter your full name"
-                                    required
-                                    className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
-                                />
-                            </div>
+                                    {/* LRN */}
+                                    <div>
+                                        <label
+                                            htmlFor="lrn"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Learner Reference Number (LRN)
+                                        </label>
 
-                            {/* Username */}
-                            <div>
-                                <label
-                                    htmlFor="username"
-                                    className="block mb-2 text-sm font-semibold text-ink"
-                                >
-                                    Create Username
-                                </label>
+                                        <input
+                                            id="lrn"
+                                            name="lrn"
+                                            type="text"
+                                            value={formData.lrn}
+                                            onChange={handleChange}
+                                            placeholder="Enter your LRN"
+                                            required
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
 
-                                <input
-                                    id="username"
-                                    name="username"
-                                    type="text"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    placeholder="Create a username"
-                                    required
-                                    className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
-                                />
-                            </div>
+                                    {/* Name */}
+                                    <div>
+                                        <label
+                                            htmlFor="name"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Full Name
+                                        </label>
 
-                            {/* Password */}
-                            <div>
-                                <label
-                                    htmlFor="password"
-                                    className="block mb-2 text-sm font-semibold text-ink"
-                                >
-                                    Password
-                                </label>
+                                        <input
+                                            id="name"
+                                            name="name"
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            placeholder="Enter your full name"
+                                            required
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
 
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    placeholder="Create a password"
-                                    required
-                                    className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
-                                />
-                            </div>
+                                    {/* Email */}
+                                    <div>
+                                        <label
+                                            htmlFor="email"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Email Address
+                                        </label>
 
-                            {/* Confirm Password */}
-                            <div>
-                                <label
-                                    htmlFor="confirmPassword"
-                                    className="block mb-2 text-sm font-semibold text-ink"
-                                >
-                                    Confirm Password
-                                </label>
+                                        <input
+                                            id="email"
+                                            name="email"
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            placeholder="Enter your email address"
+                                            required
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
 
-                                <input
-                                    id="confirmPassword"
-                                    name="confirmPassword"
-                                    type="password"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    placeholder="Confirm your password"
-                                    required
-                                    className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
-                                />
-                            </div>
+                                    {/* Username */}
+                                    <div>
+                                        <label
+                                            htmlFor="username"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Create Username
+                                        </label>
 
-                            {/* Error */}
-                            {error && (
-                                <div className="px-4 py-3 border rounded-xl border-accent/20 bg-tint-red">
-                                    <p className="text-sm font-medium text-accent">
-                                        {error}
-                                    </p>
+                                        <input
+                                            id="username"
+                                            name="username"
+                                            type="text"
+                                            value={formData.username}
+                                            onChange={handleChange}
+                                            placeholder="Create a username"
+                                            required
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
+
+                                    {/* Education Level */}
+                                    <div>
+                                        <label
+                                            htmlFor="educationLevel"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Education Level
+                                        </label>
+
+                                        <select
+                                            id="educationLevel"
+                                            name="educationLevel"
+                                            value={formData.educationLevel}
+                                            onChange={handleChange}
+                                            required
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        >
+                                            <option value="" disabled>
+                                                Select your education level
+                                            </option>
+                                            {EDUCATION_LEVELS.map((level) => (
+                                                <option
+                                                    key={level.label}
+                                                    value={level.label}
+                                                >
+                                                    {level.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Password */}
+                                    <div>
+                                        <label
+                                            htmlFor="password"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Password
+                                        </label>
+
+                                        <input
+                                            id="password"
+                                            name="password"
+                                            type="password"
+                                            value={formData.password}
+                                            onChange={handleChange}
+                                            placeholder="At least 6 characters"
+                                            required
+                                            minLength={6}
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
+
+                                    {/* Confirm Password */}
+                                    <div>
+                                        <label
+                                            htmlFor="confirmPassword"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Confirm Password
+                                        </label>
+
+                                        <input
+                                            id="confirmPassword"
+                                            name="confirmPassword"
+                                            type="password"
+                                            value={formData.confirmPassword}
+                                            onChange={handleChange}
+                                            placeholder="Confirm your password"
+                                            required
+                                            minLength={6}
+                                            className="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
+
+                                    {/* Error */}
+                                    {error && (
+                                        <div className="px-4 py-3 border rounded-xl border-accent/20 bg-tint-red">
+                                            <p className="text-sm font-medium text-accent">
+                                                {error}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Submit */}
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full rounded-xl bg-primary px-5 py-3.5 font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {loading
+                                            ? "Creating account..."
+                                            : "Create Student Account"}
+                                    </button>
+                                </form>
+
+                                {/* Login */}
+                                <div className="mt-8 text-sm text-center text-ink-soft">
+                                    Already have an account?{" "}
+                                    <button
+                                        type="button"
+                                        onClick={onLogin}
+                                        className="font-semibold text-primary hover:underline"
+                                    >
+                                        Login
+                                    </button>
                                 </div>
-                            )}
+                            </>
 
-                            {/* Submit */}
-                            <button
-                                type="submit"
-                                className="w-full rounded-xl bg-primary px-5 py-3.5 font-semibold text-white transition hover:bg-primary-hover"
-                            >
-                                Create Student Account
-                            </button>
-                        </form>
-
-                        {/* Login */}
-                        <div className="mt-8 text-sm text-center text-ink-soft">
-                            Already have an account?{" "}
-                            <button
-                                type="button"
-                                onClick={onLogin}
-                                className="font-semibold text-primary hover:underline"
-                            >
-                                Login
-                            </button>
-                        </div>
+                        )}
 
                         {/* Notice */}
                         <div className="p-4 mt-6 border rounded-xl border-border bg-bg-alt">
