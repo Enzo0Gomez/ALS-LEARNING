@@ -7,20 +7,57 @@ const ROLE_OPTIONS = [
     { value: "student", label: "Student" },
 ];
 
+const LEVEL_OPTIONS = [
+    { value: "elementary", label: "Elementary" },
+    { value: "junior_high_school", label: "Junior High School" },
+    { value: "senior_high_school", label: "Senior High School" },
+];
+
+const EMPTY_CREATE_FORM = {
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    password: "",
+    role: "student",
+    educationLevel: "junior_high_school",
+    lrn: "",
+};
+
+const TABS = [
+    { key: "staff", label: "Admins & Teachers" },
+    { key: "students", label: "Students" },
+];
+
+function getLearnerId(user) {
+    const studentRecord = Array.isArray(user.students)
+        ? user.students[0]
+        : user.students;
+
+    return user.lrn || studentRecord?.learner_id || "";
+}
+
 function AdminUsers({ currentUserId }) {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Search & role filter
+    // Tabs: "staff" (admin + teacher) vs "students"
+    const [activeTab, setActiveTab] = useState("staff");
+
+    // Search & role filter (role filter only applies within the Staff tab)
     const [searchQuery, setSearchQuery] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
 
     // Edit modal state
+    const [showCreate, setShowCreate] = useState(false);
+    const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+    const [creating, setCreating] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [editForm, setEditForm] = useState({
         firstName: "",
         lastName: "",
         role: "student",
+        lrn: "",
         password: "",
     });
     const [saving, setSaving] = useState(false);
@@ -39,18 +76,42 @@ function AdminUsers({ currentUserId }) {
         loadUsers();
     }, []);
 
+    // Switching tabs resets the search + role filter so results don't look empty
+    function switchTab(tabKey) {
+        setActiveTab(tabKey);
+        setSearchQuery("");
+        setRoleFilter("all");
+    }
+
+    function openCreate() {
+        setActionError("");
+        setActionSuccess("");
+        setCreateForm(EMPTY_CREATE_FORM);
+        setShowCreate(true);
+    }
+
+    function closeCreate() {
+        setShowCreate(false);
+        setCreateForm(EMPTY_CREATE_FORM);
+    }
+
     async function loadUsers() {
         try {
             const result = await supabase
                 .from("profiles")
                 .select(
-                    "id, first_name, last_name, role, username, is_active"
+                    "id, first_name, last_name, role, username, is_active, students(learner_id)"
                 )
                 .order("created_at", { ascending: true });
 
             if (result.error) throw result.error;
 
-            setUsers(result.data || []);
+            setUsers(
+                (result.data || []).map((user) => ({
+                    ...user,
+                    lrn: getLearnerId(user),
+                }))
+            );
         } catch (err) {
             console.error("Users fetch error:", err);
             setActionError(err.message);
@@ -67,6 +128,7 @@ function AdminUsers({ currentUserId }) {
             firstName: u.first_name || "",
             lastName: u.last_name || "",
             role: u.role || "student",
+            lrn: u.lrn || "",
             password: "",
         });
     }
@@ -77,8 +139,51 @@ function AdminUsers({ currentUserId }) {
             firstName: "",
             lastName: "",
             role: "student",
+            lrn: "",
             password: "",
         });
+    }
+
+    async function createUser(e) {
+        e.preventDefault();
+
+        setCreating(true);
+        setActionError("");
+        setActionSuccess("");
+
+        try {
+            if (createForm.password.length < 6) {
+                throw new Error("Password must be at least 6 characters.");
+            }
+
+            const result = await supabase.rpc("admin_create_user", {
+                user_email: createForm.email.trim(),
+                user_password: createForm.password,
+                user_first_name: createForm.firstName.trim(),
+                user_last_name: createForm.lastName.trim(),
+                user_username: createForm.username.trim(),
+                user_role: createForm.role,
+                user_education_level:
+                    createForm.role === "student"
+                        ? createForm.educationLevel
+                        : null,
+                user_lrn:
+                    createForm.role === "student"
+                        ? createForm.lrn.trim() || null
+                        : null,
+            });
+
+            if (result.error) throw result.error;
+
+            setActionSuccess("User created successfully.");
+            closeCreate();
+            await loadUsers();
+        } catch (err) {
+            console.error("Create user error:", err);
+            setActionError(err.message);
+        } finally {
+            setCreating(false);
+        }
     }
 
     async function saveEdit(e) {
@@ -92,18 +197,30 @@ function AdminUsers({ currentUserId }) {
 
         try {
             // 1. Update name + role in profiles
+            const updatePayload = {
+                first_name: editForm.firstName.trim(),
+                last_name: editForm.lastName.trim(),
+                role: editForm.role,
+            };
+
             const updateResult = await supabase
                 .from("profiles")
-                .update({
-                    first_name: editForm.firstName.trim(),
-                    last_name: editForm.lastName.trim(),
-                    role: editForm.role,
-                })
+                .update(updatePayload)
                 .eq("id", editingUser.id);
 
             if (updateResult.error) throw updateResult.error;
 
-            // 2. Optionally reset the password
+            // 2. Keep LRN in the students table. Blank is allowed.
+            if (editForm.role === "student") {
+                const studentResult = await supabase
+                    .from("students")
+                    .update({ learner_id: editForm.lrn.trim() || null })
+                    .eq("id", editingUser.id);
+
+                if (studentResult.error) throw studentResult.error;
+            }
+
+            // 3. Optionally reset the password
             if (editForm.password) {
                 if (editForm.password.length < 6) {
                     throw new Error(
@@ -208,10 +325,16 @@ function AdminUsers({ currentUserId }) {
         }
     }
 
-    // Client-side search + role filter
-    const filteredUsers = users.filter((u) => {
+    // Split by tab first, then apply role filter (staff tab only) + search
+    const tabUsers = users.filter((u) =>
+        activeTab === "students" ? u.role === "student" : u.role !== "student"
+    );
+
+    const filteredUsers = tabUsers.filter((u) => {
         const matchesRole =
-            roleFilter === "all" || u.role === roleFilter;
+            activeTab === "students" ||
+            roleFilter === "all" ||
+            u.role === roleFilter;
 
         const query = searchQuery.trim().toLowerCase();
         const matchesSearch =
@@ -219,14 +342,18 @@ function AdminUsers({ currentUserId }) {
             `${u.first_name} ${u.last_name}`
                 .toLowerCase()
                 .includes(query) ||
-            (u.username || "").toLowerCase().includes(query);
+            (u.username || "").toLowerCase().includes(query) ||
+            (u.lrn || "").toLowerCase().includes(query);
 
         return matchesRole && matchesSearch;
     });
 
-    const deactivatedCount = users.filter(
+    const deactivatedCount = tabUsers.filter(
         (u) => u.is_active === false
     ).length;
+
+    const staffCount = users.filter((u) => u.role !== "student").length;
+    const studentCount = users.filter((u) => u.role === "student").length;
 
     const roleBadgeClass = {
         admin: "bg-tint-blue text-primary",
@@ -237,19 +364,29 @@ function AdminUsers({ currentUserId }) {
     return (
         <>
             {/* Header */}
-            <div className="p-8 shadow rounded-2xl bg-surface">
-                <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
-                    Management
-                </p>
+            <div className="flex flex-col gap-5 p-8 shadow rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
+                        Management
+                    </p>
 
-                <h1 className="mt-2 text-3xl font-bold text-primary sm:text-4xl">
-                    Users
-                </h1>
+                    <h1 className="mt-2 text-3xl font-bold text-primary sm:text-4xl">
+                        Users
+                    </h1>
 
-                <p className="max-w-2xl mt-3 text-ink-soft">
-                    Search, filter, edit, and manage all registered
-                    accounts.
-                </p>
+                    <p className="max-w-2xl mt-3 text-ink-soft">
+                        Search, filter, edit, and manage all registered
+                        accounts.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={openCreate}
+                    className="px-5 py-3 text-sm font-semibold text-white transition rounded-xl bg-primary hover:bg-primary-hover"
+                >
+                    + Add User
+                </button>
             </div>
 
             {/* Action feedback */}
@@ -276,7 +413,7 @@ function AdminUsers({ currentUserId }) {
                         <span className="font-semibold text-ink">
                             {deactivatedCount}
                         </span>{" "}
-                        deactivated account(s). Use the{" "}
+                        deactivated account(s) in this tab. Use the{" "}
                         <span className="font-semibold text-ink">
                             ✅ Activate
                         </span>{" "}
@@ -285,8 +422,39 @@ function AdminUsers({ currentUserId }) {
                 </div>
             )}
 
+            {/* Tabs */}
+            <div className="flex gap-2 p-1 mt-8 border rounded-xl border-border bg-bg-alt w-fit">
+                {TABS.map((tab) => {
+                    const isActive = activeTab === tab.key;
+                    const count =
+                        tab.key === "students" ? studentCount : staffCount;
+
+                    return (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => switchTab(tab.key)}
+                            className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+                                isActive
+                                    ? "bg-surface text-primary shadow"
+                                    : "text-ink-soft hover:text-ink"
+                            }`}
+                        >
+                            {tab.label}{" "}
+                            <span
+                                className={`ml-1 ${
+                                    isActive ? "text-ink-soft" : "text-ink-muted"
+                                }`}
+                            >
+                                ({count})
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
             {/* Search & Filter Toolbar */}
-            <div className="flex flex-col gap-4 mt-8 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-4 mt-4 sm:flex-row sm:items-center">
                 {/* Search Bar */}
                 <div className="relative flex-1">
                     <span
@@ -300,22 +468,27 @@ function AdminUsers({ currentUserId }) {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search by name or username…"
+                        placeholder={
+                            activeTab === "students"
+                                ? "Search by name, username, or LRN…"
+                                : "Search by name or username…"
+                        }
                         className="w-full py-3 pr-4 text-sm transition border outline-none pl-11 rounded-xl border-border bg-surface text-ink placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
                     />
                 </div>
 
-                {/* Role Filter */}
-                <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    className="px-4 py-3 text-sm font-semibold transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
-                >
-                    <option value="all">All Roles</option>
-                    <option value="admin">Admin</option>
-                    <option value="teacher">Teacher</option>
-                    <option value="student">Student</option>
-                </select>
+                {/* Role Filter — staff tab only */}
+                {activeTab === "staff" && (
+                    <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        className="px-4 py-3 text-sm font-semibold transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                    >
+                        <option value="all">All Staff</option>
+                        <option value="admin">Admin</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                )}
             </div>
 
             {/* Users Table */}
@@ -342,6 +515,11 @@ function AdminUsers({ currentUserId }) {
                                     <th className="px-6 py-4 font-semibold">
                                         Username
                                     </th>
+                                    {activeTab === "students" && (
+                                        <th className="px-6 py-4 font-semibold">
+                                            LRN
+                                        </th>
+                                    )}
                                     <th className="px-6 py-4 font-semibold">
                                         Role
                                     </th>
@@ -391,6 +569,12 @@ function AdminUsers({ currentUserId }) {
                                             <td className="px-6 py-4 text-ink-soft">
                                                 {u.username || "-"}
                                             </td>
+
+                                            {activeTab === "students" && (
+                                                <td className="px-6 py-4 font-mono text-xs text-ink-soft">
+                                                    {u.lrn || "-"}
+                                                </td>
+                                            )}
 
                                             <td className="px-6 py-4">
                                                 <span
@@ -484,6 +668,260 @@ function AdminUsers({ currentUserId }) {
             </div>
 
             {/* Edit User Modal */}
+            {showCreate && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                    onClick={closeCreate}
+                >
+                    <div
+                        className="w-full max-w-md shadow-xl rounded-2xl bg-surface"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <form onSubmit={createUser} className="p-6 space-y-5">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold text-ink">
+                                    Add User
+                                </h2>
+
+                                <button
+                                    type="button"
+                                    onClick={closeCreate}
+                                    className="w-8 h-8 transition rounded-full text-ink-soft hover:bg-bg-alt hover:text-ink"
+                                >
+                                    x
+                                </button>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label
+                                        htmlFor="createFirstName"
+                                        className="block mb-2 text-sm font-semibold text-ink"
+                                    >
+                                        First Name
+                                    </label>
+                                    <input
+                                        id="createFirstName"
+                                        type="text"
+                                        value={createForm.firstName}
+                                        onChange={(e) =>
+                                            setCreateForm({
+                                                ...createForm,
+                                                firstName: e.target.value,
+                                            })
+                                        }
+                                        required
+                                        className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        htmlFor="createLastName"
+                                        className="block mb-2 text-sm font-semibold text-ink"
+                                    >
+                                        Last Name
+                                    </label>
+                                    <input
+                                        id="createLastName"
+                                        type="text"
+                                        value={createForm.lastName}
+                                        onChange={(e) =>
+                                            setCreateForm({
+                                                ...createForm,
+                                                lastName: e.target.value,
+                                            })
+                                        }
+                                        required
+                                        className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="createEmail"
+                                    className="block mb-2 text-sm font-semibold text-ink"
+                                >
+                                    Email
+                                </label>
+                                <input
+                                    id="createEmail"
+                                    type="email"
+                                    value={createForm.email}
+                                    onChange={(e) =>
+                                        setCreateForm({
+                                            ...createForm,
+                                            email: e.target.value,
+                                        })
+                                    }
+                                    required
+                                    className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                />
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="createUsername"
+                                    className="block mb-2 text-sm font-semibold text-ink"
+                                >
+                                    Username
+                                </label>
+                                <input
+                                    id="createUsername"
+                                    type="text"
+                                    value={createForm.username}
+                                    onChange={(e) =>
+                                        setCreateForm({
+                                            ...createForm,
+                                            username: e.target.value,
+                                        })
+                                    }
+                                    required
+                                    className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                />
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label
+                                        htmlFor="createRole"
+                                        className="block mb-2 text-sm font-semibold text-ink"
+                                    >
+                                        Role
+                                    </label>
+                                    <select
+                                        id="createRole"
+                                        value={createForm.role}
+                                        onChange={(e) =>
+                                            setCreateForm({
+                                                ...createForm,
+                                                role: e.target.value,
+                                            })
+                                        }
+                                        className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                    >
+                                        {ROLE_OPTIONS.map((opt) => (
+                                            <option
+                                                key={opt.value}
+                                                value={opt.value}
+                                            >
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label
+                                        htmlFor="createPassword"
+                                        className="block mb-2 text-sm font-semibold text-ink"
+                                    >
+                                        Password
+                                    </label>
+                                    <input
+                                        id="createPassword"
+                                        type="password"
+                                        value={createForm.password}
+                                        onChange={(e) =>
+                                            setCreateForm({
+                                                ...createForm,
+                                                password: e.target.value,
+                                            })
+                                        }
+                                        minLength={6}
+                                        required
+                                        className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                    />
+                                </div>
+                            </div>
+
+                            {createForm.role === "student" && (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label
+                                            htmlFor="createLevel"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            Education Level
+                                        </label>
+                                        <select
+                                            id="createLevel"
+                                            value={createForm.educationLevel}
+                                            onChange={(e) =>
+                                                setCreateForm({
+                                                    ...createForm,
+                                                    educationLevel:
+                                                        e.target.value,
+                                                })
+                                            }
+                                            className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        >
+                                            {LEVEL_OPTIONS.map((opt) => (
+                                                <option
+                                                    key={opt.value}
+                                                    value={opt.value}
+                                                >
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="createLrn"
+                                            className="block mb-2 text-sm font-semibold text-ink"
+                                        >
+                                            LRN
+                                        </label>
+                                        <input
+                                            id="createLrn"
+                                            type="text"
+                                            value={createForm.lrn}
+                                            onChange={(e) =>
+                                                setCreateForm({
+                                                    ...createForm,
+                                                    lrn: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Optional"
+                                            className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {actionError && (
+                                <div className="px-4 py-3 border border-red-200 rounded-xl bg-red-50">
+                                    <p className="text-sm font-medium text-red-600">
+                                        {actionError}
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={closeCreate}
+                                    className="flex-1 px-5 py-3 text-sm font-semibold transition border rounded-xl border-border bg-surface text-ink hover:bg-bg-alt"
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={creating}
+                                    className="flex-1 px-5 py-3 text-sm font-semibold text-white transition rounded-xl bg-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {creating ? "Creating..." : "Create User"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {editingUser && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
@@ -597,6 +1035,32 @@ function AdminUsers({ currentUserId }) {
                                     ))}
                                 </select>
                             </div>
+
+                            {/* LRN — students only */}
+                            {editForm.role === "student" && (
+                                <div>
+                                    <label
+                                        htmlFor="editLrn"
+                                        className="block mb-2 text-sm font-semibold text-ink"
+                                    >
+                                        LRN Number
+                                    </label>
+
+                                    <input
+                                        id="editLrn"
+                                        type="text"
+                                        value={editForm.lrn}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                lrn: e.target.value,
+                                            })
+                                        }
+                                        placeholder="e.g. 123456789012"
+                                        className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-border bg-surface text-ink placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                                    />
+                                </div>
+                            )}
 
                             {/* New Password */}
                             <div>

@@ -38,7 +38,7 @@ function AdminDashboard({ user, onLogout }) {
             {section === "users" && (
                 <AdminUsers currentUserId={user?.id} />
             )}
-            {section === "subjects" && <AdminSubjects />}
+            {section === "subjects" && <AdminSubjects user={user} />}
             {section === "settings" && <AdminSettings user={user} />}
         </DashboardLayout>
     );
