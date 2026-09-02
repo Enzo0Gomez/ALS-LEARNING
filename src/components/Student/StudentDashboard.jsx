@@ -1,8 +1,10 @@
 import { supabase } from "../../lib/supabase";
 import DashboardLayout from "../DashboardLayout";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChartPie, faBookOpen, faClipboardCheck, faChartLine } from "@fortawesome/free-solid-svg-icons";
 
 const SECTIONS = [
-    { id: "dashboard", label: "Dashboard", emoji: "📊" },
+    { id: "dashboard", label: "Dashboard", icon: faChartPie },
 ];
 
 function StudentDashboard({ user, onLogout }) {
@@ -50,7 +52,7 @@ function StudentDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-tint-blue">
-                        📖
+                        <FontAwesomeIcon icon={faBookOpen} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">
@@ -68,7 +70,7 @@ function StudentDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-tint-red">
-                        📝
+                        <FontAwesomeIcon icon={faClipboardCheck} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">
@@ -86,7 +88,7 @@ function StudentDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-tint-green">
-                        📈
+                        <FontAwesomeIcon icon={faChartLine} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">

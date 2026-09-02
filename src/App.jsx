@@ -24,10 +24,27 @@ const ROLE_TO_PAGE = {
     student: "student-dashboard",
 };
 
+const DEFAULT_LANDING_SETTINGS = {
+  hero_title: "Learn.\nGrow.\nAchieve.",
+  hero_description: "Accessible learning materials designed to support every ALS learner on their journey toward achieving their goals.",
+  primary_button_text: "Explore Learning Materials",
+  secondary_button_text: "Learn About ALS",
+  about_title: "Alternative Learning System",
+  about_description: "The Alternative Learning System (ALS) is a parallel learning system of the Department of Education that provides a practical option for Filipinos who cannot access formal schooling.",
+  teacher_name: "Ma’am Tan",
+  teacher_role: "Elementary ALS Coordinator",
+  teacher_bio: "Hello, I am Ma’am Tan, an Elementary ALS Coordinator with eight years of service in the Alternative Learning System.",
+  teacher_quote: "Every learner deserves a supportive path back to education.",
+  report_text: "Track learner participation, quiz performance, and learning progress through the admin reports.",
+};
+
 function App() {
   const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
   const [restoringSession, setRestoringSession] = useState(true);
+  const [landingSettings, setLandingSettings] = useState(DEFAULT_LANDING_SETTINGS);
+  const [landingTeachers, setLandingTeachers] = useState([]);
+  const [landingAnnouncements, setLandingAnnouncements] = useState([]);
 
   // Restore the logged-in session on page load / refresh so the
   // user's name and dashboard persist across reloads.
@@ -71,6 +88,32 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    async function loadLandingSettings() {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("hero_title, hero_description, primary_button_text, secondary_button_text")
+        .eq("id", true)
+        .single();
+      if (!error && data) setLandingSettings(data);
+    }
+    loadLandingSettings();
+    async function loadLandingTeachers() {
+      const { data } = await supabase
+        .from("site_teachers")
+        .select("id, name, role, bio, quote, image_url, sort_order")
+        .order("sort_order")
+        .order("created_at");
+      if (data) setLandingTeachers(data);
+    }
+    loadLandingTeachers();
+    async function loadLandingAnnouncements() {
+      const { data } = await supabase.from("announcements").select("id, title, description, image_url, pdf_url, created_at").eq("post_landing", true).order("created_at", { ascending: false });
+      if (data) setLandingAnnouncements(data);
+    }
+    loadLandingAnnouncements();
+  }, []);
+
   const handleAdminLogin = (profile) => {
     setUser(profile);
     setPage("admin-dashboard");
@@ -109,15 +152,15 @@ function App() {
       {showNavbar && <Navbar onNavigate={setPage} />}
 
       {page === "home" && (
-        <Homepage />
+        <Homepage settings={landingSettings} announcements={landingAnnouncements} onNavigate={setPage} />
       )}
 
       {page === "about" && (
-        <Aboutpage />
+        <Aboutpage settings={landingSettings} />
       )}
 
       {page === "teacher" && (
-        <Teacher />
+        <Teacher settings={landingSettings} teachers={landingTeachers} />
       )}
 
       {page === "login" && (
@@ -134,7 +177,13 @@ function App() {
       )}
 
       {page === "admin-dashboard" && (
-        <AdminDashboard user={user} onLogout={handleLogout} />
+        <AdminDashboard
+          user={user}
+          onLogout={handleLogout}
+          onSettingsSaved={setLandingSettings}
+          onTeachersSaved={setLandingTeachers}
+          onAnnouncementsSaved={setLandingAnnouncements}
+        />
       )}
 
       {page === "teacher-dashboard" && (

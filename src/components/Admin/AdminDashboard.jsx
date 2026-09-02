@@ -5,15 +5,18 @@ import AdminStats from "./AdminStats";
 import AdminUsers from "./AdminUsers";
 import AdminSubjects from "./AdminSubjects";
 import AdminSettings from "./AdminSettings";
+import AdminAnnouncements from "./AdminAnnouncements";
+import { faChartPie, faUsers, faBookOpen, faGear, faBullhorn } from "@fortawesome/free-solid-svg-icons";
 
 const SECTIONS = [
-    { id: "dashboard", label: "Dashboard", emoji: "📊" },
-    { id: "users", label: "Users", emoji: "👥" },
-    { id: "subjects", label: "Subject", emoji: "📚" },
-    { id: "settings", label: "Settings", emoji: "⚙️" },
+    { id: "dashboard", label: "Dashboard", icon: faChartPie },
+    { id: "users", label: "Users", icon: faUsers },
+    { id: "subjects", label: "Subject", icon: faBookOpen },
+    { id: "settings", label: "Settings", icon: faGear },
+    { id: "announcements", label: "Announcements", icon: faBullhorn },
 ];
 
-function AdminDashboard({ user, onLogout }) {
+function AdminDashboard({ user, onLogout, onSettingsSaved, onTeachersSaved, onAnnouncementsSaved }) {
     const [section, setSection] = useState("dashboard");
 
     const handleLogout = async () => {
@@ -39,7 +42,8 @@ function AdminDashboard({ user, onLogout }) {
                 <AdminUsers currentUserId={user?.id} />
             )}
             {section === "subjects" && <AdminSubjects user={user} />}
-            {section === "settings" && <AdminSettings user={user} />}
+            {section === "settings" && <AdminSettings user={user} onSettingsSaved={onSettingsSaved} onTeachersSaved={onTeachersSaved} />}
+            {section === "announcements" && <AdminAnnouncements user={user} onAnnouncementsSaved={onAnnouncementsSaved} />}
         </DashboardLayout>
     );
 }

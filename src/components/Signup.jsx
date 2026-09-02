@@ -211,7 +211,7 @@ function Signup({ onLogin }) {
                 </div>
 
                 {/* Right Side */}
-                <div className="flex items-center justify-center w-full px-6 py-12 lg:w-1/2">
+                <div className="flex items-center justify-center w-full px-4 py-8 sm:px-6 sm:py-12 lg:w-1/2">
                     <div className="w-full max-w-md">
 
                         {/* Header */}

@@ -1,11 +1,19 @@
+import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import DashboardLayout from "../DashboardLayout";
+import AdminSubjects from "../Admin/AdminSubjects";
+import TeacherStudents from "./TeacherStudents";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChartPie, faBookOpen, faClipboardCheck, faUsers } from "@fortawesome/free-solid-svg-icons";
 
 const SECTIONS = [
-    { id: "dashboard", label: "Dashboard", emoji: "📊" },
+    { id: "dashboard", label: "Dashboard", icon: faChartPie },
+    { id: "content", label: "Content", icon: faBookOpen },
+    { id: "students", label: "Students", icon: faUsers },
 ];
 
 function TeacherDashboard({ user, onLogout }) {
+    const [section, setSection] = useState("dashboard");
     const handleLogout = async () => {
         await supabase.auth.signOut();
         onLogout();
@@ -20,10 +28,14 @@ function TeacherDashboard({ user, onLogout }) {
                     : ""
             }
             items={SECTIONS}
-            activeSection="dashboard"
-            onSectionChange={() => {}}
+            activeSection={section}
+            onSectionChange={setSection}
             onLogout={handleLogout}
         >
+            {section === "content" && <AdminSubjects user={user} role="teacher" />}
+            {section === "students" && <TeacherStudents />}
+
+            {section === "dashboard" && <>
             {/* Header */}
             <div className="p-8 shadow rounded-2xl bg-surface">
                 <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
@@ -50,7 +62,7 @@ function TeacherDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-tint-blue">
-                        📚
+                        <FontAwesomeIcon icon={faBookOpen} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">
@@ -68,7 +80,7 @@ function TeacherDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-tint-green">
-                        📖
+                        <FontAwesomeIcon icon={faBookOpen} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">
@@ -86,7 +98,7 @@ function TeacherDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-tint-red">
-                        📝
+                        <FontAwesomeIcon icon={faClipboardCheck} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">
@@ -104,7 +116,7 @@ function TeacherDashboard({ user, onLogout }) {
                     className="p-6 text-left transition shadow rounded-2xl bg-surface hover:-translate-y-1"
                 >
                     <div className="flex items-center justify-center w-12 h-12 text-2xl rounded-xl bg-highlight-soft">
-                        👨‍🎓
+                        <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
                     </div>
 
                     <h2 className="mt-5 text-lg font-bold text-ink">
@@ -149,6 +161,7 @@ function TeacherDashboard({ user, onLogout }) {
 
                 </div>
             </section>
+            </>}
         </DashboardLayout>
     );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck, faMagnifyingGlass, faPen, faBan, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 const ROLE_OPTIONS = [
     { value: "admin", label: "Admin" },
@@ -415,7 +417,7 @@ function AdminUsers({ currentUserId }) {
                         </span>{" "}
                         deactivated account(s) in this tab. Use the{" "}
                         <span className="font-semibold text-ink">
-                            ✅ Activate
+                            <FontAwesomeIcon icon={faCheck} aria-hidden="true" /> Activate
                         </span>{" "}
                         button to restore their access.
                     </p>
@@ -454,14 +456,14 @@ function AdminUsers({ currentUserId }) {
             </div>
 
             {/* Search & Filter Toolbar */}
-            <div className="flex flex-col gap-4 mt-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 mt-4 sm:flex-row sm:items-center">
                 {/* Search Bar */}
                 <div className="relative flex-1">
                     <span
                         aria-hidden="true"
                         className="absolute -translate-y-1/2 left-4 top-1/2 text-ink-muted"
                     >
-                        🔍
+                        <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
                     </span>
 
                     <input
@@ -482,7 +484,7 @@ function AdminUsers({ currentUserId }) {
                     <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="px-4 py-3 text-sm font-semibold transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft"
+                        className="w-full px-4 py-3 text-sm font-semibold transition border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft sm:w-auto"
                     >
                         <option value="all">All Staff</option>
                         <option value="admin">Admin</option>
@@ -503,7 +505,7 @@ function AdminUsers({ currentUserId }) {
                     </p>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full min-w-205 text-sm text-left">
                             <thead className="bg-bg-alt text-ink-soft">
                                 <tr>
                                     <th className="px-6 py-4 font-semibold">
@@ -613,7 +615,7 @@ function AdminUsers({ currentUserId }) {
                                                         }
                                                         className="px-3 py-2 text-xs font-semibold transition rounded-lg bg-tint-blue text-primary hover:bg-primary hover:text-white"
                                                     >
-                                                        ✏️ Edit
+                                                        <FontAwesomeIcon icon={faPen} aria-hidden="true" /> Edit
                                                     </button>
 
                                                     {/* Deactivate / Activate */}
@@ -632,7 +634,7 @@ function AdminUsers({ currentUserId }) {
                                                         >
                                                             {isToggling ?
                                                                 "…" :
-                                                                "✅ Activate"}
+                                                                <><FontAwesomeIcon icon={faCheck} aria-hidden="true" /> Activate</>}
                                                         </button>
                                                     ) : (
                                                         <button
@@ -653,7 +655,7 @@ function AdminUsers({ currentUserId }) {
                                                             }
                                                             className="px-3 py-2 text-xs font-semibold transition rounded-lg bg-tint-red text-accent hover:bg-accent hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
-                                                            🚫 Deactivate
+                                                            <><FontAwesomeIcon icon={faBan} aria-hidden="true" /> Deactivate</>
                                                         </button>
                                                     )}
                                                 </div>
@@ -674,7 +676,7 @@ function AdminUsers({ currentUserId }) {
                     onClick={closeCreate}
                 >
                     <div
-                        className="w-full max-w-md shadow-xl rounded-2xl bg-surface"
+                        className="w-full max-h-[calc(100vh-2rem)] max-w-md overflow-y-auto shadow-xl rounded-2xl bg-surface"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <form onSubmit={createUser} className="p-6 space-y-5">
@@ -928,7 +930,7 @@ function AdminUsers({ currentUserId }) {
                     onClick={closeEdit}
                 >
                     <div
-                        className="w-full max-w-md shadow-xl rounded-2xl bg-surface"
+                        className="w-full max-h-[calc(100vh-2rem)] max-w-md overflow-y-auto shadow-xl rounded-2xl bg-surface"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <form onSubmit={saveEdit} className="p-6 space-y-5">
@@ -944,7 +946,7 @@ function AdminUsers({ currentUserId }) {
                                     onClick={closeEdit}
                                     className="w-8 h-8 transition rounded-full text-ink-soft hover:bg-bg-alt hover:text-ink"
                                 >
-                                    ✕
+                                    <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
                                 </button>
                             </div>
 
@@ -1141,7 +1143,7 @@ function AdminUsers({ currentUserId }) {
 
                             {/* Warning Icon */}
                             <div className="flex items-center justify-center mx-auto text-2xl rounded-full w-14 h-14 bg-tint-red">
-                                🚫
+                                <FontAwesomeIcon icon={faBan} aria-hidden="true" />
                             </div>
 
                             <h2 className="mt-4 text-lg font-bold text-ink">

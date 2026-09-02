@@ -1,3 +1,6 @@
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+
 function DashboardLayout({
     portalLabel,
     userName,
@@ -20,21 +23,21 @@ function DashboardLayout({
         <div className="min-h-screen bg-bg">
 
             {/* Fixed Sidebar */}
-            <aside className="fixed inset-y-0 left-0 z-40 flex flex-col w-64 text-white bg-primary">
+            <aside className="fixed inset-y-0 left-0 z-40 flex w-20 flex-col text-white bg-primary lg:w-64">
 
                 {/* Brand */}
-                <div className="px-6 py-6 border-b border-white/10">
-                    <p className="text-lg font-bold">
+                <div className="px-3 py-5 border-b border-white/10 lg:px-6 lg:py-6">
+                    <p className="text-center text-sm font-bold lg:text-left lg:text-lg">
                         ALS Learning Hub
                     </p>
 
-                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/60">
+                    <p className="hidden mt-1 text-xs uppercase tracking-[0.2em] text-white/60 lg:block">
                         {portalLabel}
                     </p>
                 </div>
 
                 {/* Nav Items */}
-                <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                <nav className="flex-1 px-2 py-5 space-y-1 overflow-y-auto lg:px-4 lg:py-6">
 
                     {items.map((item) => {
                         const isActive = item.id === activeSection;
@@ -44,7 +47,8 @@ function DashboardLayout({
                                 key={item.id}
                                 type="button"
                                 onClick={() => onSectionChange(item.id)}
-                                className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                                title={item.label}
+                                className={`flex w-full items-center justify-center gap-3 rounded-xl px-2 py-3 text-sm font-semibold transition lg:justify-start lg:px-4 ${
                                     isActive
                                         ? "bg-white text-primary shadow"
                                         : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -54,10 +58,10 @@ function DashboardLayout({
                                     aria-hidden="true"
                                     className="text-base"
                                 >
-                                    {item.emoji}
+                                    <FontAwesomeIcon icon={item.icon} fixedWidth aria-hidden="true" />
                                 </span>
 
-                                {item.label}
+                                <span className="hidden lg:inline">{item.label}</span>
                             </button>
                         );
                     })}
@@ -65,15 +69,15 @@ function DashboardLayout({
                 </nav>
 
                 {/* User Info + Logout */}
-                <div className="p-4 border-t border-white/10">
+                <div className="p-2 border-t border-white/10 lg:p-4">
 
                     {/* Logged-in user identity */}
-                    <div className="flex items-center gap-3 px-2 pb-4">
+                    <div className="flex items-center justify-center gap-3 px-0 pb-3 lg:justify-start lg:px-2 lg:pb-4">
                         <div className="flex items-center justify-center w-10 h-10 text-sm font-bold rounded-full shrink-0 bg-white/20">
                             {initials}
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="hidden min-w-0 lg:block">
                             <p className="text-sm font-semibold truncate">
                                 {userName || "Guest"}
                             </p>
@@ -88,16 +92,17 @@ function DashboardLayout({
                     <button
                         type="button"
                         onClick={onLogout}
-                        className="flex items-center w-full gap-3 px-4 py-3 text-sm font-semibold transition rounded-xl text-white/80 hover:bg-red-500/20 hover:text-white"
+                        title="Log out"
+                        className="flex items-center justify-center w-full gap-3 px-2 py-3 text-sm font-semibold transition rounded-xl text-white/80 hover:bg-red-500/20 hover:text-white lg:justify-start lg:px-4"
                     >
                         <span
                             aria-hidden="true"
                             className="text-base"
                         >
-                            🚪
+                            <FontAwesomeIcon icon={faRightFromBracket} fixedWidth aria-hidden="true" />
                         </span>
 
-                        Log out
+                        <span className="hidden lg:inline">Log out</span>
                     </button>
 
                 </div>
@@ -105,8 +110,8 @@ function DashboardLayout({
             </aside>
 
             {/* Content Area */}
-            <div className="min-h-screen ml-64">
-                <div className="px-8 py-10 mx-auto max-w-7xl">
+            <div className="min-h-screen ml-20 lg:ml-64">
+                <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 sm:py-8 lg:px-8 lg:py-10">
                     {children}
                 </div>
             </div>

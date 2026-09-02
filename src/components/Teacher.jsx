@@ -6,7 +6,14 @@ const highlights = [
   ["100%", "Learner-centered"],
 ]
 
-function TeacherCard() {
+function TeacherCard({ settings, profile }) {
+  const teacher = profile || {
+    name: settings?.teacher_name || "Ma'am Tan",
+    role: settings?.teacher_role || "Elementary ALS Coordinator",
+    bio: settings?.teacher_bio || "Hello, I'm Ma'am Tan, an Elementary ALS Coordinator with eight years of service in the Alternative Learning System.",
+    quote: settings?.teacher_quote || "Every learner deserves a supportive path back to education.",
+    image_url: null,
+  };
   return (
     <div
       style={{
@@ -36,8 +43,8 @@ function TeacherCard() {
         }}
       >
         <img
-          src={teacherProfile}
-          alt="Ma'am Tan"
+          src={teacher.image_url || teacherProfile}
+          alt={teacher.name}
           style={{ width: "100%", height: "100%",  }}
         />
       </div>
@@ -46,20 +53,20 @@ function TeacherCard() {
       <div style={{ textAlign: "left", flex: 1 }}>
         {/* Name & Role */}
         <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "bold", color: "#1a1a40" }}>
-          Ma'am Tan
+          {teacher.name}
         </h3>
         <p style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-          Elementary ALS Coordinator
+          {teacher.role}
         </p>
 
         {/* Bio */}
         <p style={{ marginTop: "10px", fontSize: "13px", color: "#444", lineHeight: "1.4" }}>
-          Hello, I'm Ma'am Tan, an Elementary ALS Coordinator with eight years of service in the Alternative Learning System.
+          {teacher.bio}
         </p>
 
         {/* Quote */}
         <p style={{ marginTop: "8px", fontSize: "12px", fontStyle: "italic", color: "#555" }}>
-          “Every learner deserves a supportive path back to education.”
+          “{teacher.quote}”
         </p>
 
         {/* Highlights */}
@@ -86,4 +93,15 @@ function TeacherCard() {
   )
 }
 
-export default TeacherCard
+function Teacher({ settings, teachers = [] }) {
+  const profiles = teachers.length > 0 ? teachers : [null];
+  return (
+    <div className="px-4 py-8 bg-bg sm:px-6">
+      <div className="grid max-w-6xl gap-6 mx-auto lg:grid-cols-2">
+        {profiles.map((profile, index) => <TeacherCard key={profile?.id || index} settings={settings} profile={profile} />)}
+      </div>
+    </div>
+  );
+}
+
+export default Teacher

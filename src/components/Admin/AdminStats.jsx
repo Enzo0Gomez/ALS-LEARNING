@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGraduationCap, faChalkboardUser, faClipboardCheck, faBookOpen, faUsers } from "@fortawesome/free-solid-svg-icons";
 
 function AdminStats({ user }) {
+    const [reportText, setReportText] = useState("Track learner participation, quiz performance, and learning progress through the admin reports.");
     const [stats, setStats] = useState({
         students: null,
         teachers: null,
@@ -86,35 +89,43 @@ function AdminStats({ user }) {
         };
     }, []);
 
+    useEffect(() => {
+        async function loadReportText() {
+            const result = await supabase.from("site_settings").select("report_text").eq("id", true).single();
+            if (!result.error && result.data?.report_text) setReportText(result.data.report_text);
+        }
+        loadReportText();
+    }, []);
+
     const statCards = [
         {
             label: "Total Students",
             value: stats.students,
-            emoji: "🎓",
+            icon: faGraduationCap,
             hint: "Students signed up",
         },
         {
             label: "Total Teachers",
             value: stats.teachers,
-            emoji: "👩‍🏫",
+            icon: faChalkboardUser,
             hint: "Teachers registered",
         },
         {
             label: "Quiz Takers",
             value: stats.quizTakers,
-            emoji: "📝",
+            icon: faClipboardCheck,
             hint: "Students who took a quiz",
         },
         {
             label: "Modules Uploaded",
             value: stats.modulesUploaded,
-            emoji: "📚",
+            icon: faBookOpen,
             hint: "Uploaded to Google Drive",
         },
         {
             label: "Total Users",
             value: stats.totalUsers,
-            emoji: "👥",
+            icon: faUsers,
             hint: "All registered accounts",
         },
     ];
@@ -136,6 +147,7 @@ function AdminStats({ user }) {
                         ? `Welcome back, ${user.first_name || "Admin"} ${user.last_name || ""}!`
                         : "Welcome back!"}
                 </p>
+                <p className="max-w-2xl mt-3 text-sm text-ink-soft">{reportText}</p>
             </div>
 
             {/* Error */}
@@ -164,7 +176,7 @@ function AdminStats({ user }) {
                                 aria-hidden="true"
                                 className="text-2xl"
                             >
-                                {card.emoji}
+                                <FontAwesomeIcon icon={card.icon} aria-hidden="true" />
                             </span>
                         </div>
 
