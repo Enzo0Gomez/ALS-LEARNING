@@ -133,6 +133,82 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "subjects_student_read_published" ON public.subjects;
+CREATE POLICY "subjects_student_read_published"
+ON public.subjects FOR SELECT TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'student'));
+
+DROP POLICY IF EXISTS "modules_student_read_published" ON public.modules;
+CREATE POLICY "modules_student_read_published"
+ON public.modules FOR SELECT TO authenticated
+USING (
+  status = 'published'
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'student')
+);
+
+DROP POLICY IF EXISTS "quizzes_student_read_published" ON public.quizzes;
+CREATE POLICY "quizzes_student_read_published"
+ON public.quizzes FOR SELECT TO authenticated
+USING (
+  status = 'published'
+  AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'student')
+);
+
+DROP POLICY IF EXISTS "quiz_questions_student_read_published" ON public.quiz_questions;
+CREATE POLICY "quiz_questions_student_read_published"
+ON public.quiz_questions FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.quizzes
+    WHERE quizzes.id = quiz_questions.quiz_id
+      AND quizzes.status = 'published'
+      AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'student')
+  )
+);
+
+DROP POLICY IF EXISTS "quiz_choices_student_read_published" ON public.quiz_choices;
+CREATE POLICY "quiz_choices_student_read_published"
+ON public.quiz_choices FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.quiz_questions
+    JOIN public.quizzes ON quizzes.id = quiz_questions.quiz_id
+    WHERE quiz_questions.id = quiz_choices.question_id
+      AND quizzes.status = 'published'
+      AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'student')
+  )
+);
+
+DROP POLICY IF EXISTS "quiz_attempts_student_own" ON public.quiz_attempts;
+CREATE POLICY "quiz_attempts_student_own"
+ON public.quiz_attempts FOR ALL TO authenticated
+USING (student_id = auth.uid())
+WITH CHECK (student_id = auth.uid());
+
+DROP POLICY IF EXISTS "student_answers_student_own" ON public.student_answers;
+CREATE POLICY "student_answers_student_own"
+ON public.student_answers FOR ALL TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.quiz_attempts
+    WHERE quiz_attempts.id = student_answers.attempt_id
+      AND quiz_attempts.student_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.quiz_attempts
+    WHERE quiz_attempts.id = student_answers.attempt_id
+      AND quiz_attempts.student_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "module_progress_student_own" ON public.module_progress;
+CREATE POLICY "module_progress_student_own"
+ON public.module_progress FOR SELECT TO authenticated
+USING (student_id = auth.uid());
+
 -- Backfill existing admin-created modules where the original script did not
 -- store an uploader. The profile id is resolved by email, not hard-coded.
 UPDATE public.modules

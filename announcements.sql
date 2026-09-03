@@ -16,6 +16,11 @@ ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "announcements_public_landing_read" ON public.announcements;
 CREATE POLICY "announcements_public_landing_read" ON public.announcements FOR SELECT USING (post_landing = true);
+DROP POLICY IF EXISTS "announcements_student_read" ON public.announcements;
+CREATE POLICY "announcements_student_read" ON public.announcements FOR SELECT TO authenticated USING (
+    for_student = true
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'student')
+);
 DROP POLICY IF EXISTS "announcements_admin_read" ON public.announcements;
 CREATE POLICY "announcements_admin_read" ON public.announcements FOR SELECT TO authenticated USING (public.is_admin());
 DROP POLICY IF EXISTS "announcements_admin_insert" ON public.announcements;

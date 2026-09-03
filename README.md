@@ -7,6 +7,7 @@ Web application para sa Alternative Learning System (ALS). May hiwalay na worksp
 - Public homepage, tungkol sa ALS, at teacher information page
 - Email/password authentication gamit ang Supabase
 - Role-based dashboards para sa admin, teacher, at student
+- Student dashboard na may progress total, Todo list, announcements, modules, at quizzes
 - Pamamahala ng users, subjects, modules, quizzes, at learner progress
 - Announcements para sa teachers, students, at public landing page
 - Row Level Security (RLS) policies para maprotektahan ang data
