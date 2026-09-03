@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import AlertModal from "../AlertModal";
 
 const EMPTY_FORM = {
     name: "",
@@ -53,7 +54,7 @@ async function fetchSubjects() {
     const result = await supabase
         .from("subjects")
         .select(
-            "id, name, description, education_level, created_at, modules(id, title, pdf_url, created_at, uploaded_by, uploader:profiles!modules_uploaded_by_fkey(first_name, last_name), quizzes(id, title, status, time_limit_minutes, passing_score, max_attempts, created_at, created_by_profile, creator:profiles!quizzes_created_by_profile_fkey(first_name, last_name), quiz_questions(id, image_url)))"
+            "id, name, description, education_level, created_at, modules(id, title, description, grade_level, pdf_url, status, module_order, created_at, uploaded_by, uploader:profiles!modules_uploaded_by_fkey(first_name, last_name), quizzes(id, title, status, time_limit_minutes, passing_score, max_attempts, created_at, created_by_profile, creator:profiles!quizzes_created_by_profile_fkey(first_name, last_name), quiz_questions(id, image_url)))"
         )
         .order("name", { ascending: true });
 
@@ -79,6 +80,11 @@ function AdminSubjects({ user, role = "admin" }) {
     const [quizFilter, setQuizFilter] = useState("all");
     const [quizAttempts, setQuizAttempts] = useState([]);
     const [attemptsLoading, setAttemptsLoading] = useState(false);
+    const [selectedModuleIds, setSelectedModuleIds] = useState([]);
+    const [editingModule, setEditingModule] = useState(null);
+    const [moduleForm, setModuleForm] = useState({ title: "", description: "", grade_level: "", status: "published", module_order: 0 });
+    const [savingModule, setSavingModule] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -175,6 +181,121 @@ function AdminSubjects({ user, role = "admin" }) {
 
     function closeView() {
         setViewingSubject(null);
+        setSelectedModuleIds([]);
+    }
+
+    function openEditModule(module) {
+        setEditingModule(module);
+        setModuleForm({
+            title: module.title || "",
+            description: module.description || "",
+            grade_level: module.grade_level || "",
+            status: module.status || "published",
+            module_order: module.module_order || 0,
+        });
+        setError("");
+    }
+
+    function closeModuleForm() {
+        setEditingModule(null);
+        setModuleForm({ title: "", description: "", grade_level: "", status: "published", module_order: 0 });
+    }
+
+    async function saveModule(event) {
+        event.preventDefault();
+        if (!moduleForm.title.trim()) {
+            setError("Module title is required.");
+            return;
+        }
+
+        setSavingModule(true);
+        setError("");
+        try {
+            const result = await supabase
+                .from("modules")
+                .update({
+                    title: moduleForm.title.trim(),
+                    description: moduleForm.description.trim() || null,
+                    grade_level: moduleForm.grade_level.trim() || null,
+                    status: moduleForm.status,
+                    module_order: Number(moduleForm.module_order) || 0,
+                })
+                .eq("id", editingModule.id);
+            if (result.error) throw result.error;
+
+            setSuccess("Module updated successfully.");
+            closeModuleForm();
+            const refreshedSubjects = await fetchSubjects();
+            setSubjects(refreshedSubjects);
+            if (viewingSubject) {
+                const refreshedSubject = refreshedSubjects.find((subject) => subject.id === viewingSubject.id);
+                if (refreshedSubject) setViewingSubject(refreshedSubject);
+            }
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSavingModule(false);
+        }
+    }
+
+    async function deleteModules(moduleIds) {
+        if (!moduleIds.length) return;
+
+        setError("");
+        setSuccess("");
+        try {
+            const quizLookup = await supabase
+                .from("quizzes")
+                .select("id, quiz_questions(id)")
+                .in("module_id", moduleIds);
+            if (quizLookup.error) throw quizLookup.error;
+
+            const quizIds = (quizLookup.data || []).map((quiz) => quiz.id);
+            const questionIds = (quizLookup.data || []).flatMap((quiz) => (quiz.quiz_questions || []).map((question) => question.id));
+
+            if (quizIds.length) {
+                const attempts = await supabase.from("quiz_attempts").select("id").in("quiz_id", quizIds);
+                if (attempts.error) throw attempts.error;
+                const attemptIds = (attempts.data || []).map((attempt) => attempt.id);
+
+                if (attemptIds.length) {
+                    const answerDelete = await supabase.from("student_answers").delete().in("attempt_id", attemptIds);
+                    if (answerDelete.error) throw answerDelete.error;
+                }
+                if (questionIds.length) {
+                    const questionAnswerDelete = await supabase.from("student_answers").delete().in("question_id", questionIds);
+                    if (questionAnswerDelete.error) throw questionAnswerDelete.error;
+                }
+                if (attemptIds.length) {
+                    const attemptDelete = await supabase.from("quiz_attempts").delete().in("id", attemptIds);
+                    if (attemptDelete.error) throw attemptDelete.error;
+                }
+                if (questionIds.length) {
+                    const choiceDelete = await supabase.from("quiz_choices").delete().in("question_id", questionIds);
+                    if (choiceDelete.error) throw choiceDelete.error;
+                    const questionDelete = await supabase.from("quiz_questions").delete().in("id", questionIds);
+                    if (questionDelete.error) throw questionDelete.error;
+                }
+                const quizDelete = await supabase.from("quizzes").delete().in("id", quizIds);
+                if (quizDelete.error) throw quizDelete.error;
+            }
+
+            const result = await supabase.from("modules").delete().in("id", moduleIds);
+            if (result.error) throw result.error;
+            setSelectedModuleIds([]);
+            setSuccess(`${moduleIds.length} module(s) deleted successfully.`);
+            const refreshedSubjects = await fetchSubjects();
+            setSubjects(refreshedSubjects);
+            if (viewingSubject) setViewingSubject(refreshedSubjects.find((subject) => subject.id === viewingSubject.id) || null);
+        } catch (err) {
+            setError(err.message);
+        }
+    }
+
+    function toggleModuleSelection(moduleId) {
+        setSelectedModuleIds((current) => current.includes(moduleId)
+            ? current.filter((id) => id !== moduleId)
+            : [...current, moduleId]);
     }
 
     function openEdit(subject) {
@@ -440,12 +561,6 @@ function AdminSubjects({ user, role = "admin" }) {
     }
 
     async function deleteSubject(subject) {
-        const confirmed = window.confirm(
-            `Delete ${subject.name}? Modules connected to this subject may prevent deletion.`
-        );
-
-        if (!confirmed) return;
-
         setError("");
         setSuccess("");
 
@@ -508,8 +623,17 @@ function AdminSubjects({ user, role = "admin" }) {
             .includes(contentSearch.toLowerCase());
     });
 
+    function confirmPendingDelete() {
+        const pending = pendingDelete;
+        setPendingDelete(null);
+        if (pending.kind === "subject") deleteSubject(pending.subject);
+        else deleteModules(pending.ids);
+    }
+
     return (
         <>
+            <AlertModal type={error ? "error" : "success"} message={error || success} onClose={() => { setError(""); setSuccess(""); }} />
+            {pendingDelete && <AlertModal type="warning" title={pendingDelete.kind === "subject" ? "Delete subject?" : "Delete modules?"} message={pendingDelete.kind === "subject" ? `${pendingDelete.subject.name} and its linked content may be removed.` : `${pendingDelete.ids.length} selected module(s) may affect connected quiz content.`} onClose={() => setPendingDelete(null)} onConfirm={confirmPendingDelete} confirmLabel="Delete" />}
             {/* Header */}
             <div className="flex flex-col gap-5 p-6 shadow sm:p-8 rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -626,7 +750,7 @@ function AdminSubjects({ user, role = "admin" }) {
                                     </button>}
                                     {isAdmin && <button
                                         type="button"
-                                        onClick={() => deleteSubject(subject)}
+                                        onClick={() => setPendingDelete({ kind: "subject", subject })}
                                         className="px-3 py-2 text-xs font-semibold transition rounded-lg bg-tint-red text-accent hover:bg-accent hover:text-white"
                                     >
                                         Delete
@@ -712,6 +836,26 @@ function AdminSubjects({ user, role = "admin" }) {
                         </div>
 
                         <div className="p-6">
+                            {isAdmin && filteredModules.length > 0 && (
+                                <div className="flex flex-col gap-3 p-4 mb-4 border rounded-xl border-border bg-bg-alt sm:flex-row sm:items-center sm:justify-between">
+                                    <label className="flex items-center gap-3 text-sm font-semibold text-ink">
+                                        <input
+                                            type="checkbox"
+                                            checked={filteredModules.length > 0 && filteredModules.every((module) => selectedModuleIds.includes(module.id))}
+                                            onChange={(event) => setSelectedModuleIds(event.target.checked ? filteredModules.map((module) => module.id) : [])}
+                                        />
+                                        Select all shown ({selectedModuleIds.length} selected)
+                                    </label>
+                                    <button
+                                        type="button"
+                                        disabled={!selectedModuleIds.length}
+                                        onClick={() => setPendingDelete({ kind: "modules", ids: selectedModuleIds })}
+                                        className="px-4 py-2 text-xs font-semibold text-white transition rounded-lg bg-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        Delete selected
+                                    </button>
+                                </div>
+                            )}
                             {filteredModules.length === 0 ? (
                                 <div className="p-8 text-center border rounded-xl border-border text-ink-soft">
                                     No content matches the selected filters.
@@ -721,6 +865,7 @@ function AdminSubjects({ user, role = "admin" }) {
                                     <table className="w-full text-sm text-left">
                                         <thead className="text-xs uppercase bg-bg-alt text-ink-muted">
                                             <tr>
+                                                <th className="w-10 px-3 py-3"><span className="sr-only">Select</span></th>
                                                 <th className="px-3 py-3">Module / PDF</th>
                                                 <th className="px-3 py-3">Uploaded by</th>
                                                 <th className="px-3 py-3">Uploaded at</th>
@@ -741,6 +886,14 @@ function AdminSubjects({ user, role = "admin" }) {
                                                     : "-";
                                                 return (
                                                     <tr key={module.id} className="align-top text-ink">
+                                                        <td className="px-3 py-3">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedModuleIds.includes(module.id)}
+                                                                onChange={() => toggleModuleSelection(module.id)}
+                                                                aria-label={`Select ${module.title}`}
+                                                            />
+                                                        </td>
                                                         <td className="px-3 py-3 min-w-48">
                                                             {module.pdf_url ? (
                                                                 <a href={module.pdf_url} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">
@@ -763,9 +916,11 @@ function AdminSubjects({ user, role = "admin" }) {
                                                             ) : <span className="text-ink-muted">No quiz set</span>}
                                                         </td>
                                                         <td className="px-3 py-3">
-                                                            <button type="button" onClick={() => openQuizForm(module)} className="px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap bg-tint-blue text-primary hover:bg-primary hover:text-white">
-                                                                {quiz ? "Add quiz" : "Set quiz"}
-                                                            </button>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {isAdmin && <button type="button" onClick={() => openEditModule(module)} className="px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap bg-tint-blue text-primary hover:bg-primary hover:text-white">Edit</button>}
+                                                                {isAdmin && <button type="button" onClick={() => setPendingDelete({ kind: "modules", ids: [module.id] })} className="px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap bg-tint-red text-accent hover:bg-accent hover:text-white">Delete</button>}
+                                                                <button type="button" onClick={() => openQuizForm(module)} className="px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap bg-tint-blue text-primary hover:bg-primary hover:text-white">{quiz ? "Add quiz" : "Set quiz"}</button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -994,6 +1149,56 @@ function AdminSubjects({ user, role = "admin" }) {
                                 >
                                     {saving ? "Saving..." : "Save Class"}
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {editingModule && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeModuleForm}>
+                    <div className="w-full max-h-[calc(100vh-2rem)] max-w-lg overflow-y-auto shadow-xl rounded-2xl bg-surface" onClick={(event) => event.stopPropagation()}>
+                        <form onSubmit={saveModule} className="p-6 space-y-5">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase text-secondary">Module management</p>
+                                    <h2 className="mt-1 text-lg font-bold text-ink">Edit module</h2>
+                                </div>
+                                <button type="button" onClick={closeModuleForm} className="w-8 h-8 transition rounded-full text-ink-soft hover:bg-bg-alt hover:text-ink" aria-label="Close module editor">x</button>
+                            </div>
+
+                            <div>
+                                <label htmlFor="moduleTitle" className="block mb-2 text-sm font-semibold text-ink">Module title</label>
+                                <input id="moduleTitle" type="text" value={moduleForm.title} onChange={(event) => setModuleForm({ ...moduleForm, title: event.target.value })} className="w-full px-4 py-3 text-sm border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft" />
+                            </div>
+
+                            <div>
+                                <label htmlFor="moduleDescription" className="block mb-2 text-sm font-semibold text-ink">Description</label>
+                                <textarea id="moduleDescription" rows={4} value={moduleForm.description} onChange={(event) => setModuleForm({ ...moduleForm, description: event.target.value })} className="w-full px-4 py-3 text-sm border outline-none resize-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft" />
+                            </div>
+
+                            <div>
+                                <label htmlFor="moduleGradeLevel" className="block mb-2 text-sm font-semibold text-ink">Grade level</label>
+                                <input id="moduleGradeLevel" type="text" value={moduleForm.grade_level} onChange={(event) => setModuleForm({ ...moduleForm, grade_level: event.target.value })} placeholder="e.g. Grade 10" className="w-full px-4 py-3 text-sm border outline-none rounded-xl border-border bg-surface text-ink placeholder:text-ink-muted focus:border-highlight focus:ring-4 focus:ring-highlight-soft" />
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="moduleStatus" className="block mb-2 text-sm font-semibold text-ink">Status</label>
+                                    <select id="moduleStatus" value={moduleForm.status} onChange={(event) => setModuleForm({ ...moduleForm, status: event.target.value })} className="w-full px-3 py-3 text-sm border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft">
+                                        <option value="published">Published</option>
+                                        <option value="draft">Draft</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="moduleOrder" className="block mb-2 text-sm font-semibold text-ink">Display order</label>
+                                    <input id="moduleOrder" type="number" min="0" value={moduleForm.module_order} onChange={(event) => setModuleForm({ ...moduleForm, module_order: event.target.value })} className="w-full px-3 py-3 text-sm border outline-none rounded-xl border-border bg-surface text-ink focus:border-highlight focus:ring-4 focus:ring-highlight-soft" />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={closeModuleForm} className="flex-1 px-5 py-3 text-sm font-semibold transition border rounded-xl border-border bg-surface text-ink hover:bg-bg-alt">Cancel</button>
+                                <button type="submit" disabled={savingModule} className="flex-1 px-5 py-3 text-sm font-semibold text-white transition rounded-xl bg-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60">{savingModule ? "Saving..." : "Save module"}</button>
                             </div>
                         </form>
                     </div>

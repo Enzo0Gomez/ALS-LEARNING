@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import PasswordInput from "./PasswordInput";
 
 function Login({
     onSignUp,
@@ -235,9 +236,8 @@ function Login({
 
                                 </div>
 
-                                <input
+                                <PasswordInput
                                     id="password"
-                                    type="password"
                                     value={password}
                                     onChange={(e) =>
                                         setPassword(e.target.value)

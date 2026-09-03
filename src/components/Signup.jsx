@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import PasswordInput from "./PasswordInput";
 
 const EDUCATION_LEVELS = [
     {
@@ -384,10 +385,9 @@ function Signup({ onLogin }) {
                                             Password
                                         </label>
 
-                                        <input
+                                        <PasswordInput
                                             id="password"
                                             name="password"
-                                            type="password"
                                             value={formData.password}
                                             onChange={handleChange}
                                             placeholder="At least 6 characters"
@@ -406,10 +406,9 @@ function Signup({ onLogin }) {
                                             Confirm Password
                                         </label>
 
-                                        <input
+                                        <PasswordInput
                                             id="confirmPassword"
                                             name="confirmPassword"
-                                            type="password"
                                             value={formData.confirmPassword}
                                             onChange={handleChange}
                                             placeholder="Confirm your password"

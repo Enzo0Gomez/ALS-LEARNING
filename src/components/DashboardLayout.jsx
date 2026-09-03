@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { faBars, faRightFromBracket, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 function DashboardLayout({
     portalLabel,
@@ -10,6 +11,8 @@ function DashboardLayout({
     onLogout,
     children,
 }) {
+    const [menuOpen, setMenuOpen] = useState(false);
+
     // Build initials for the avatar (e.g. "Juan Dela Cruz" -> "JD")
     const initials =
         (userName || "")
@@ -26,7 +29,7 @@ function DashboardLayout({
             <aside className="fixed inset-x-0 top-0 z-40 flex h-16 w-full flex-row text-white shadow-xl bg-primary lg:inset-y-0 lg:right-auto lg:h-auto lg:w-64 lg:flex-col">
 
                 {/* Brand */}
-                <div className="flex items-center justify-center w-20 px-2 border-b border-r border-white/10 lg:block lg:w-auto lg:px-6 lg:py-6 lg:border-r-0">
+                <div className="flex min-w-0 flex-1 items-center justify-between px-3 border-b border-r border-white/10 lg:block lg:w-auto lg:flex-none lg:px-6 lg:py-6 lg:border-r-0">
                     <p className="text-center text-sm font-bold tracking-tight lg:text-left lg:text-lg">
                         ALS Learning Hub
                     </p>
@@ -34,10 +37,21 @@ function DashboardLayout({
                     <p className="hidden mt-1 text-xs uppercase tracking-[0.2em] text-white/60 lg:block">
                         {portalLabel}
                     </p>
+
+                    <button
+                        type="button"
+                        onClick={() => setMenuOpen((open) => !open)}
+                        aria-expanded={menuOpen}
+                        aria-controls="dashboard-navigation"
+                        aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+                        className="dashboard-menu-toggle flex h-11 w-11 items-center justify-center rounded-xl text-lg text-white hover:bg-white/10 lg:hidden"
+                    >
+                        <FontAwesomeIcon icon={menuOpen ? faXmark : faBars} aria-hidden="true" />
+                    </button>
                 </div>
 
                 {/* Nav Items */}
-                <nav className="flex flex-1 gap-1 px-2 py-2 overflow-x-auto lg:block lg:px-4 lg:py-6 lg:space-y-1 lg:overflow-y-auto">
+                <nav id="dashboard-navigation" className={`dashboard-nav ${menuOpen ? "dashboard-nav-open" : "dashboard-nav-closed"} flex-1 gap-1 px-2 py-2 overflow-x-auto lg:static lg:block lg:px-4 lg:py-6 lg:space-y-1 lg:overflow-y-auto`}>
 
                     {items.map((item) => {
                         const isActive = item.id === activeSection;
@@ -46,9 +60,12 @@ function DashboardLayout({
                             <button
                                 key={item.id}
                                 type="button"
-                                onClick={() => onSectionChange(item.id)}
+                                onClick={() => {
+                                    onSectionChange(item.id);
+                                    setMenuOpen(false);
+                                }}
                                 title={item.label}
-                                className={`flex min-w-11 items-center justify-center gap-3 rounded-xl px-2 py-3 text-sm font-semibold transition lg:w-full lg:justify-start lg:px-4 ${
+                                className={`dashboard-nav-item flex min-w-11 shrink-0 items-center justify-center gap-3 rounded-xl px-2 py-3 text-sm font-semibold transition lg:w-full lg:justify-start lg:px-4 ${
                                     isActive
                                         ? "bg-white text-primary shadow"
                                         : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -61,7 +78,7 @@ function DashboardLayout({
                                     <FontAwesomeIcon icon={item.icon} fixedWidth aria-hidden="true" />
                                 </span>
 
-                                <span className="hidden lg:inline">{item.label}</span>
+                                <span className="inline whitespace-nowrap lg:inline">{item.label}</span>
                             </button>
                         );
                     })}
@@ -69,7 +86,7 @@ function DashboardLayout({
                 </nav>
 
                 {/* User Info + Logout */}
-                <div className="flex items-center p-2 border-l border-white/10 lg:block lg:p-4 lg:border-l-0 lg:border-t">
+                <div className="flex items-center shrink-0 p-2 border-l border-white/10 lg:block lg:p-4 lg:border-l-0 lg:border-t">
 
                     {/* Logged-in user identity */}
                     <div className="flex items-center justify-center gap-3 px-0 lg:justify-start lg:px-2 lg:pb-4">
@@ -111,7 +128,7 @@ function DashboardLayout({
 
             {/* Content Area */}
             <div className="min-h-screen pt-16 lg:ml-64 lg:pt-0">
-                <div className="px-3 py-4 mx-auto max-w-7xl sm:px-6 sm:py-7 lg:px-8 lg:py-8">
+                <div className="min-w-0 px-3 py-4 mx-auto max-w-7xl sm:px-6 sm:py-7 lg:px-8 lg:py-8">
                     {children}
                 </div>
             </div>

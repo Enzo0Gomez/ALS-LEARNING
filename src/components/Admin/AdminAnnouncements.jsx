@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import AlertModal from "../AlertModal";
 
 const EMPTY_FORM = {
     title: "",
@@ -26,6 +27,7 @@ function AdminAnnouncements({ user, onAnnouncementsSaved }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [deletingId, setDeletingId] = useState(null);
 
     async function loadAnnouncements() {
         const result = await supabase.from("announcements").select("id, title, description, image_url, pdf_url, for_teacher, for_student, post_landing, created_at").order("created_at", { ascending: false });
@@ -95,7 +97,6 @@ function AdminAnnouncements({ user, onAnnouncementsSaved }) {
     }
 
     async function deleteAnnouncement(id) {
-        if (!window.confirm("Delete this announcement?")) return;
         const result = await supabase.from("announcements").delete().eq("id", id);
         if (result.error) setError(result.error.message);
         else {
@@ -104,6 +105,7 @@ function AdminAnnouncements({ user, onAnnouncementsSaved }) {
             onAnnouncementsSaved?.(next);
             setSuccess("Announcement deleted.");
         }
+        setDeletingId(null);
     }
 
     const loading = announcements === null;
@@ -112,6 +114,8 @@ function AdminAnnouncements({ user, onAnnouncementsSaved }) {
 
     return (
         <>
+            <AlertModal type={error ? "error" : "success"} message={error || success} onClose={() => { setError(""); setSuccess(""); }} />
+            {deletingId && <AlertModal type="warning" title="Delete announcement?" message="This announcement will be removed from all audiences and the landing page." onClose={() => setDeletingId(null)} onConfirm={() => deleteAnnouncement(deletingId)} confirmLabel="Delete" />}
             <div className="flex flex-col gap-4 p-5 shadow sm:flex-row sm:items-center sm:justify-between sm:p-8 rounded-2xl bg-surface">
                 <div><p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">Communication</p><h1 className="mt-2 text-3xl font-bold text-primary">Announcements</h1><p className="mt-3 text-ink-soft">Create announcements for teachers, students, and the public landing page.</p></div>
             </div>
@@ -138,7 +142,7 @@ function AdminAnnouncements({ user, onAnnouncementsSaved }) {
 
             <div className="p-5 mt-6 shadow sm:p-8 rounded-2xl bg-surface">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-xl font-bold text-ink">Posted announcements</h2><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search announcements..." className="w-full px-4 py-3 text-sm border rounded-xl border-border sm:max-w-xs" /></div>
-                <div className="mt-5 overflow-x-auto border rounded-xl border-border">{loading ? <p className="p-6 text-center text-ink-soft">Loading announcements...</p> : filtered.length === 0 ? <p className="p-6 text-center text-ink-soft">No announcements found.</p> : <table className="w-full min-w-180 text-sm text-left"><thead className="text-xs uppercase bg-bg-alt text-ink-muted"><tr><th className="px-4 py-3">Title</th><th className="px-4 py-3">Audience</th><th className="px-4 py-3">Landing</th><th className="px-4 py-3">Posted</th><th className="px-4 py-3">Action</th></tr></thead><tbody className="divide-y divide-border">{filtered.map((item) => <tr key={item.id}><td className="px-4 py-3 font-semibold">{item.title}<p className="mt-1 font-normal text-ink-soft">{item.description}</p><div className="flex gap-2 mt-2">{item.image_url && <a className="text-xs text-primary hover:underline" href={item.image_url} target="_blank" rel="noreferrer">Picture</a>}{item.pdf_url && <a className="text-xs text-primary hover:underline" href={item.pdf_url} target="_blank" rel="noreferrer">PDF</a>}</div></td><td className="px-4 py-3">{[item.for_teacher && "Teacher", item.for_student && "Student"].filter(Boolean).join(", ")}</td><td className="px-4 py-3">{item.post_landing ? "Published" : "Hidden"}</td><td className="px-4 py-3 whitespace-nowrap text-ink-soft">{formatDate(item.created_at)}</td><td className="px-4 py-3"><button type="button" onClick={() => deleteAnnouncement(item.id)} className="px-3 py-2 text-xs font-semibold rounded-lg bg-tint-red text-accent hover:bg-accent hover:text-white">Delete</button></td></tr>)}</tbody></table>}</div>
+                <div className="mt-5 overflow-x-auto border rounded-xl border-border">{loading ? <p className="p-6 text-center text-ink-soft">Loading announcements...</p> : filtered.length === 0 ? <p className="p-6 text-center text-ink-soft">No announcements found.</p> : <table className="w-full min-w-180 text-sm text-left"><thead className="text-xs uppercase bg-bg-alt text-ink-muted"><tr><th className="px-4 py-3">Title</th><th className="px-4 py-3">Audience</th><th className="px-4 py-3">Landing</th><th className="px-4 py-3">Posted</th><th className="px-4 py-3">Action</th></tr></thead><tbody className="divide-y divide-border">{filtered.map((item) => <tr key={item.id}><td className="px-4 py-3 font-semibold">{item.title}<p className="mt-1 font-normal text-ink-soft">{item.description}</p><div className="flex gap-2 mt-2">{item.image_url && <a className="text-xs text-primary hover:underline" href={item.image_url} target="_blank" rel="noreferrer">Picture</a>}{item.pdf_url && <a className="text-xs text-primary hover:underline" href={item.pdf_url} target="_blank" rel="noreferrer">PDF</a>}</div></td><td className="px-4 py-3">{[item.for_teacher && "Teacher", item.for_student && "Student"].filter(Boolean).join(", ")}</td><td className="px-4 py-3">{item.post_landing ? "Published" : "Hidden"}</td><td className="px-4 py-3 whitespace-nowrap text-ink-soft">{formatDate(item.created_at)}</td><td className="px-4 py-3"><button type="button" onClick={() => setDeletingId(item.id)} className="px-3 py-2 text-xs font-semibold rounded-lg bg-tint-red text-accent hover:bg-accent hover:text-white">Delete</button></td></tr>)}</tbody></table>}</div>
             </div>
         </>
     );

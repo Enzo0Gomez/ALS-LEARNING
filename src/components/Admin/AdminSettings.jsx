@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import AlertModal from "../AlertModal";
 
 const DEFAULT_SETTINGS = {
     hero_title: "Learn.\nGrow.\nAchieve.",
@@ -100,6 +101,7 @@ function AdminSettings({ user, onSettingsSaved, onTeachersSaved }) {
 
     return (
         <>
+            <AlertModal type={error ? "error" : "success"} message={error || message} onClose={() => { setError(""); setMessage(""); }} />
             {/* Header */}
             <div className="p-6 shadow sm:p-8 rounded-2xl bg-surface">
                 <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">

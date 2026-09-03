@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import AlertModal from "../AlertModal";
 import { faCheck, faFileExcel, faMagnifyingGlass, faPen, faBan, faXmark } from "@fortawesome/free-solid-svg-icons";
 import * as XLSX from "xlsx";
 
@@ -461,6 +462,7 @@ function AdminUsers({ currentUserId }) {
 
     return (
         <>
+            <AlertModal type={actionError ? "error" : "success"} message={actionError || actionSuccess} onClose={() => { setActionError(""); setActionSuccess(""); }} />
             {/* Header */}
             <div className="flex flex-col gap-5 p-6 shadow sm:p-8 rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
                 <div>

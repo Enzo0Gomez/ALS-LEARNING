@@ -67,8 +67,9 @@ Patakbuhin ang SQL files sa **Supabase Dashboard > SQL Editor**. Inirerekomendan
 4. `sql/site-settings.sql` para sa editable landing page content at multiple teacher profiles/pictures
 5. `sql/announcements.sql` para sa announcements, optional pictures/PDFs, audience filters, at landing-page publishing
 6. `sql/admin-content-and-users.sql`, `sql/admin-stats-policies.sql`, at `sql/admin-users-management.sql` para sa admin policies
-7. `sql/setup-accounts.sql` para sa sample teacher at student accounts
-8. `sql/setup-admin.sql` para sa admin account configuration
+7. `sql/admin-content-delete-policies.sql` para payagan ang admin na mag-delete ng modules kasama ang linked quiz records
+8. `sql/setup-accounts.sql` para sa sample teacher at student accounts
+9. `sql/setup-admin.sql` para sa admin account configuration
 
 Ang `sql/database.sql` ay schema reference. Kung hindi ito direktang ma-run dahil sa table order o existing objects, gamitin ang project-specific setup/fix scripts at i-check ang resulta gamit ang `sql/check-*.sql` files.
 

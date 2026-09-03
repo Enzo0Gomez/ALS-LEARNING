@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGraduationCap, faChalkboardUser, faClipboardCheck, faBookOpen, faUsers } from "@fortawesome/free-solid-svg-icons";
+import AlertModal from "../AlertModal";
+import { faGraduationCap, faChalkboardUser, faClipboardCheck, faBookOpen, faUsers, faBullhorn, faGear, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 
-function AdminStats({ user }) {
+function AdminStats({ user, onNavigate }) {
     const [reportText, setReportText] = useState("Track learner participation, quiz performance, and learning progress through the admin reports.");
     const [stats, setStats] = useState({
         students: null,
@@ -132,6 +133,7 @@ function AdminStats({ user }) {
 
     return (
         <>
+            <AlertModal type="error" message={error} onClose={() => setError("")} />
             {/* Header */}
             <div className="relative p-6 overflow-hidden shadow sm:p-8 rounded-2xl bg-surface">
                 <div className="absolute top-0 left-0 w-2 h-full bg-secondary" aria-hidden="true" />
@@ -149,6 +151,12 @@ function AdminStats({ user }) {
                         : "Welcome back!"}
                 </p>
                 <p className="max-w-2xl mt-3 text-sm text-ink-soft">{reportText}</p>
+                <div className="flex flex-wrap gap-2 mt-6" aria-label="Admin quick actions">
+                    <QuickAction icon={faUserPlus} label="Add user" onClick={() => onNavigate("users")} />
+                    <QuickAction icon={faBookOpen} label="Manage subjects" onClick={() => onNavigate("subjects")} />
+                    <QuickAction icon={faBullhorn} label="Post announcement" onClick={() => onNavigate("announcements")} />
+                    <QuickAction icon={faGear} label="Open settings" onClick={() => onNavigate("settings")} />
+                </div>
             </div>
 
             {/* Error */}
@@ -166,7 +174,7 @@ function AdminStats({ user }) {
                 {statCards.map((card) => (
                     <div
                         key={card.label}
-                        className="p-5 transition border shadow-sm rounded-2xl border-border bg-surface hover:-translate-y-0.5 hover:shadow-md"
+                        className="admin-stat-card p-5 transition border shadow-sm rounded-2xl border-border bg-surface hover:-translate-y-0.5 hover:shadow-md"
                     >
                         <div className="flex items-center justify-between">
                             <p className="text-xs font-bold tracking-wide uppercase text-ink-soft">
@@ -195,6 +203,19 @@ function AdminStats({ user }) {
 
             </div>
         </>
+    );
+}
+
+function QuickAction({ icon, label, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-bg-alt px-3 py-2 text-sm font-semibold text-primary transition hover:border-highlight hover:bg-tint-blue"
+        >
+            <FontAwesomeIcon icon={icon} aria-hidden="true" />
+            {label}
+        </button>
     );
 }
 

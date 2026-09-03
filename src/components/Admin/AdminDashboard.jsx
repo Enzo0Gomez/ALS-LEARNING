@@ -37,7 +37,7 @@ function AdminDashboard({ user, onLogout, onSettingsSaved, onTeachersSaved, onAn
             onSectionChange={setSection}
             onLogout={handleLogout}
         >
-            {section === "dashboard" && <AdminStats user={user} />}
+            {section === "dashboard" && <AdminStats user={user} onNavigate={setSection} />}
             {section === "users" && (
                 <AdminUsers currentUserId={user?.id} />
             )}
