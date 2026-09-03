@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faMagnifyingGlass, faPen, faBan, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faFileExcel, faMagnifyingGlass, faPen, faBan, faXmark } from "@fortawesome/free-solid-svg-icons";
+import * as XLSX from "xlsx";
 
 const ROLE_OPTIONS = [
     { value: "admin", label: "Admin" },
@@ -31,6 +32,20 @@ const TABS = [
     { key: "students", label: "Students" },
 ];
 
+const IMPORT_COLUMNS = [
+    "first_name",
+    "last_name",
+    "email",
+    "username",
+    "password",
+    "education_level",
+    "lrn",
+];
+
+function normalizeImportValue(value) {
+    return String(value ?? "").trim();
+}
+
 function getLearnerId(user) {
     const studentRecord = Array.isArray(user.students)
         ? user.students[0]
@@ -52,6 +67,9 @@ function AdminUsers({ currentUserId }) {
 
     // Edit modal state
     const [showCreate, setShowCreate] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState(null);
     const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
     const [creating, setCreating] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
@@ -95,6 +113,84 @@ function AdminUsers({ currentUserId }) {
     function closeCreate() {
         setShowCreate(false);
         setCreateForm(EMPTY_CREATE_FORM);
+    }
+
+    function openImport() {
+        setActionError("");
+        setActionSuccess("");
+        setImportResult(null);
+        setShowImport(true);
+    }
+
+    function closeImport() {
+        if (importing) return;
+        setShowImport(false);
+        setImportResult(null);
+    }
+
+    function downloadImportTemplate() {
+        const worksheet = XLSX.utils.json_to_sheet([{
+            first_name: "Juan",
+            last_name: "Dela Cruz",
+            email: "juan.delacruz@example.com",
+            username: "juandelacruz",
+            password: "Student@12345",
+            education_level: "junior_high_school",
+            lrn: "123456789012",
+        }], { header: IMPORT_COLUMNS });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+        XLSX.writeFile(workbook, "student-import-template.xlsx");
+    }
+
+    async function importStudents(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+
+        setImporting(true);
+        setActionError("");
+        setActionSuccess("");
+        setImportResult(null);
+
+        try {
+            const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+            if (!rows.length) throw new Error("The Excel file has no student rows.");
+
+            const failures = [];
+            let imported = 0;
+            for (let index = 0; index < rows.length; index += 1) {
+                const rowNumber = index + 2;
+                const row = Object.fromEntries(Object.entries(rows[index]).map(([key, value]) => [key.trim().toLowerCase(), normalizeImportValue(value)]));
+                const requiredFields = ["first_name", "last_name", "email", "username", "password"];
+                const missing = requiredFields.filter((field) => !row[field]);
+                if (missing.length || row.password.length < 6) {
+                    failures.push(`Row ${rowNumber}: ${missing.length ? `Missing ${missing.join(", ")}` : "Password must be at least 6 characters."}`);
+                    continue;
+                }
+                const result = await supabase.rpc("admin_create_user", {
+                    user_email: row.email,
+                    user_password: row.password,
+                    user_first_name: row.first_name,
+                    user_last_name: row.last_name,
+                    user_username: row.username,
+                    user_role: "student",
+                    user_education_level: row.education_level || "junior_high_school",
+                    user_lrn: row.lrn || null,
+                });
+                if (result.error) failures.push(`Row ${rowNumber}: ${result.error.message}`);
+                else imported += 1;
+            }
+
+            setImportResult({ imported, failures });
+            if (imported) await loadUsers();
+        } catch (err) {
+            setActionError(`Import failed: ${err.message}`);
+        } finally {
+            setImporting(false);
+        }
     }
 
     async function loadUsers() {
@@ -366,7 +462,7 @@ function AdminUsers({ currentUserId }) {
     return (
         <>
             {/* Header */}
-            <div className="flex flex-col gap-5 p-8 shadow rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-5 p-6 shadow sm:p-8 rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
                         Management
@@ -382,13 +478,14 @@ function AdminUsers({ currentUserId }) {
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={openCreate}
-                    className="px-5 py-3 text-sm font-semibold text-white transition rounded-xl bg-primary hover:bg-primary-hover"
-                >
-                    + Add User
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <button type="button" onClick={openCreate} className="px-5 py-3 text-sm font-semibold text-white transition rounded-xl bg-primary hover:bg-primary-hover">
+                        + Add User
+                    </button>
+                    <button type="button" onClick={openImport} className="px-5 py-3 text-sm font-semibold transition border rounded-xl border-primary text-primary hover:bg-tint-blue">
+                        <FontAwesomeIcon icon={faFileExcel} aria-hidden="true" /> Import Students
+                    </button>
+                </div>
             </div>
 
             {/* Action feedback */}
@@ -668,6 +765,56 @@ function AdminUsers({ currentUserId }) {
                     </div>
                 )}
             </div>
+
+            {showImport && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                    onClick={closeImport}
+                >
+                    <div
+                        className="w-full max-w-lg p-6 shadow-xl rounded-2xl bg-surface"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-ink">Import Student Accounts</h2>
+                            <button type="button" onClick={closeImport} className="w-8 h-8 transition rounded-full text-ink-soft hover:bg-bg-alt hover:text-ink">
+                                <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <p className="mt-3 text-sm text-ink-soft">
+                            Upload an Excel file with columns: first_name, last_name, email, username, password, education_level, and lrn.
+                        </p>
+                        <div className="p-4 mt-5 border rounded-xl border-border bg-bg-alt">
+                            <h3 className="text-sm font-bold text-ink">How to import students</h3>
+                            <ol className="mt-3 space-y-2 text-sm text-ink-soft">
+                                <li><span className="font-semibold text-ink">1.</span> Download the Excel template below.</li>
+                                <li><span className="font-semibold text-ink">2.</span> Add one student per row. Keep the first row as the column headers.</li>
+                                <li><span className="font-semibold text-ink">3.</span> Fill in the required fields: first name, last name, email, username, and password.</li>
+                                <li><span className="font-semibold text-ink">4.</span> Save the file as `.xlsx` or `.xls`, then choose it below.</li>
+                                <li><span className="font-semibold text-ink">5.</span> Review the imported and failed row counts after processing.</li>
+                            </ol>
+                            <p className="mt-3 text-xs text-ink-muted">Use a password with at least 6 characters. Format the LRN column as Text to preserve leading zeroes.</p>
+                        </div>
+                        <button type="button" onClick={downloadImportTemplate} className="mt-4 text-sm font-semibold text-primary hover:underline">
+                            Download Excel template
+                        </button>
+                        <label htmlFor="studentImportFile" className="block p-6 mt-5 text-sm font-semibold text-center border-2 border-dashed cursor-pointer rounded-xl border-border text-ink hover:border-primary hover:bg-bg-alt">
+                            <FontAwesomeIcon icon={faFileExcel} className="mr-2 text-primary" aria-hidden="true" />
+                            {importing ? "Importing students..." : "Choose .xlsx or .xls file"}
+                            <input id="studentImportFile" type="file" accept=".xlsx,.xls" onChange={importStudents} disabled={importing} className="hidden" />
+                        </label>
+                        {importResult && (
+                            <div className="p-4 mt-5 text-sm border rounded-xl border-border bg-bg-alt">
+                                <p className="font-semibold text-ink">Imported: {importResult.imported}</p>
+                                <p className="mt-1 font-semibold text-ink">Failed: {importResult.failures.length}</p>
+                                {importResult.failures.length > 0 && <ul className="mt-3 space-y-1 overflow-y-auto text-xs text-red-600 max-h-32">{importResult.failures.map((failure, index) => <li key={`${index}-${failure}`}>{failure}</li>)}</ul>}
+                            </div>
+                        )}
+                        {actionError && <p className="p-3 mt-5 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50">{actionError}</p>}
+                        <button type="button" onClick={closeImport} disabled={importing} className="w-full px-5 py-3 mt-5 text-sm font-semibold transition border rounded-xl border-border text-ink hover:bg-bg-alt disabled:opacity-50">Close</button>
+                    </div>
+                </div>
+            )}
 
             {/* Edit User Modal */}
             {showCreate && (

@@ -101,7 +101,7 @@ function AdminSettings({ user, onSettingsSaved, onTeachersSaved }) {
     return (
         <>
             {/* Header */}
-            <div className="p-8 shadow rounded-2xl bg-surface">
+            <div className="p-6 shadow sm:p-8 rounded-2xl bg-surface">
                 <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
                     Configuration
                 </p>
@@ -116,7 +116,7 @@ function AdminSettings({ user, onSettingsSaved, onTeachersSaved }) {
             </div>
 
             {/* Account Info */}
-            <div className="p-8 mt-8 shadow rounded-2xl bg-surface">
+            <div className="p-6 mt-6 shadow sm:p-8 rounded-2xl bg-surface">
                 <h2 className="text-xl font-bold text-ink">
                     Account Information
                 </h2>

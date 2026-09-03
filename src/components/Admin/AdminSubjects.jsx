@@ -511,7 +511,7 @@ function AdminSubjects({ user, role = "admin" }) {
     return (
         <>
             {/* Header */}
-            <div className="flex flex-col gap-5 p-8 shadow rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-5 p-6 shadow sm:p-8 rounded-2xl bg-surface sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
                         Management

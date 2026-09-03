@@ -209,6 +209,17 @@ CREATE POLICY "module_progress_student_own"
 ON public.module_progress FOR SELECT TO authenticated
 USING (student_id = auth.uid());
 
+DROP POLICY IF EXISTS "module_progress_student_insert" ON public.module_progress;
+CREATE POLICY "module_progress_student_insert"
+ON public.module_progress FOR INSERT TO authenticated
+WITH CHECK (student_id = auth.uid());
+
+DROP POLICY IF EXISTS "module_progress_student_update" ON public.module_progress;
+CREATE POLICY "module_progress_student_update"
+ON public.module_progress FOR UPDATE TO authenticated
+USING (student_id = auth.uid())
+WITH CHECK (student_id = auth.uid());
+
 -- Backfill existing admin-created modules where the original script did not
 -- store an uploader. The profile id is resolved by email, not hard-coded.
 UPDATE public.modules

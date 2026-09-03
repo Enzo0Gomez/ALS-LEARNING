@@ -69,7 +69,7 @@ async function main() {
         console.error(
             "WARNING: Role is '" +
             profile.role +
-            "' not 'admin'. Run setup-admin.sql again."
+            "' not 'admin'. Run sql/setup-admin.sql again."
         );
         process.exit(1);
     }

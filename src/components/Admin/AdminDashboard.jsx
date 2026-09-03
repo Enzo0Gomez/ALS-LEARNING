@@ -11,7 +11,7 @@ import { faChartPie, faUsers, faBookOpen, faGear, faBullhorn } from "@fortawesom
 const SECTIONS = [
     { id: "dashboard", label: "Dashboard", icon: faChartPie },
     { id: "users", label: "Users", icon: faUsers },
-    { id: "subjects", label: "Subject", icon: faBookOpen },
+    { id: "subjects", label: "Subjects", icon: faBookOpen },
     { id: "settings", label: "Settings", icon: faGear },
     { id: "announcements", label: "Announcements", icon: faBullhorn },
 ];

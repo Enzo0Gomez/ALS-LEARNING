@@ -33,10 +33,6 @@ function AdminAnnouncements({ user, onAnnouncementsSaved }) {
             console.error("Announcements fetch error:", result.error);
             return;
         }
-        // Data fetched from Supabase initializes the table after mount.
-        // oxlint-disable-next-line react(set-state-in-effect)
-        // Remote data initializes the announcement list after mount.
-        // oxlint-disable-next-line react(set-state-in-effect)
         setAnnouncements(result.data || []);
     }
 

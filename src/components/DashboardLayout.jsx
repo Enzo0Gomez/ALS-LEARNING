@@ -23,11 +23,11 @@ function DashboardLayout({
         <div className="min-h-screen bg-bg">
 
             {/* Fixed Sidebar */}
-            <aside className="fixed inset-y-0 left-0 z-40 flex w-20 flex-col text-white bg-primary lg:w-64">
+            <aside className="fixed inset-x-0 top-0 z-40 flex h-16 w-full flex-row text-white shadow-xl bg-primary lg:inset-y-0 lg:right-auto lg:h-auto lg:w-64 lg:flex-col">
 
                 {/* Brand */}
-                <div className="px-3 py-5 border-b border-white/10 lg:px-6 lg:py-6">
-                    <p className="text-center text-sm font-bold lg:text-left lg:text-lg">
+                <div className="flex items-center justify-center w-20 px-2 border-b border-r border-white/10 lg:block lg:w-auto lg:px-6 lg:py-6 lg:border-r-0">
+                    <p className="text-center text-sm font-bold tracking-tight lg:text-left lg:text-lg">
                         ALS Learning Hub
                     </p>
 
@@ -37,7 +37,7 @@ function DashboardLayout({
                 </div>
 
                 {/* Nav Items */}
-                <nav className="flex-1 px-2 py-5 space-y-1 overflow-y-auto lg:px-4 lg:py-6">
+                <nav className="flex flex-1 gap-1 px-2 py-2 overflow-x-auto lg:block lg:px-4 lg:py-6 lg:space-y-1 lg:overflow-y-auto">
 
                     {items.map((item) => {
                         const isActive = item.id === activeSection;
@@ -48,7 +48,7 @@ function DashboardLayout({
                                 type="button"
                                 onClick={() => onSectionChange(item.id)}
                                 title={item.label}
-                                className={`flex w-full items-center justify-center gap-3 rounded-xl px-2 py-3 text-sm font-semibold transition lg:justify-start lg:px-4 ${
+                                className={`flex min-w-11 items-center justify-center gap-3 rounded-xl px-2 py-3 text-sm font-semibold transition lg:w-full lg:justify-start lg:px-4 ${
                                     isActive
                                         ? "bg-white text-primary shadow"
                                         : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -69,10 +69,10 @@ function DashboardLayout({
                 </nav>
 
                 {/* User Info + Logout */}
-                <div className="p-2 border-t border-white/10 lg:p-4">
+                <div className="flex items-center p-2 border-l border-white/10 lg:block lg:p-4 lg:border-l-0 lg:border-t">
 
                     {/* Logged-in user identity */}
-                    <div className="flex items-center justify-center gap-3 px-0 pb-3 lg:justify-start lg:px-2 lg:pb-4">
+                    <div className="flex items-center justify-center gap-3 px-0 lg:justify-start lg:px-2 lg:pb-4">
                         <div className="flex items-center justify-center w-10 h-10 text-sm font-bold rounded-full shrink-0 bg-white/20">
                             {initials}
                         </div>
@@ -110,8 +110,8 @@ function DashboardLayout({
             </aside>
 
             {/* Content Area */}
-            <div className="min-h-screen ml-20 lg:ml-64">
-                <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+            <div className="min-h-screen pt-16 lg:ml-64 lg:pt-0">
+                <div className="px-3 py-4 mx-auto max-w-7xl sm:px-6 sm:py-7 lg:px-8 lg:py-8">
                     {children}
                 </div>
             </div>

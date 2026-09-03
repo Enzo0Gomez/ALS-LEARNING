@@ -27,7 +27,7 @@ function StudentDashboard({ user, onLogout }) {
             onSectionChange={setSection}
             onLogout={handleLogout}
         >
-            <StudentContent user={user} section={section} />
+            <StudentContent user={user} section={section} onSectionChange={setSection} />
         </DashboardLayout>
     );
 }

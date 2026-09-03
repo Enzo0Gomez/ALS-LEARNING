@@ -133,7 +133,8 @@ function AdminStats({ user }) {
     return (
         <>
             {/* Header */}
-            <div className="p-8 shadow rounded-2xl bg-surface">
+            <div className="relative p-6 overflow-hidden shadow sm:p-8 rounded-2xl bg-surface">
+                <div className="absolute top-0 left-0 w-2 h-full bg-secondary" aria-hidden="true" />
                 <p className="text-sm font-bold uppercase tracking-[0.15em] text-secondary">
                     Overview
                 </p>
@@ -160,27 +161,27 @@ function AdminStats({ user }) {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-6 mt-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-2 xl:grid-cols-5">
 
                 {statCards.map((card) => (
                     <div
                         key={card.label}
-                        className="p-6 transition shadow rounded-2xl bg-surface hover:shadow-md"
+                        className="p-5 transition border shadow-sm rounded-2xl border-border bg-surface hover:-translate-y-0.5 hover:shadow-md"
                     >
                         <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold tracking-wide uppercase text-ink-soft">
+                            <p className="text-xs font-bold tracking-wide uppercase text-ink-soft">
                                 {card.label}
                             </p>
 
                             <span
                                 aria-hidden="true"
-                                className="text-2xl"
+                                className="flex items-center justify-center w-10 h-10 text-lg rounded-xl bg-tint-blue text-primary"
                             >
                                 <FontAwesomeIcon icon={card.icon} aria-hidden="true" />
                             </span>
                         </div>
 
-                        <p className="mt-4 text-4xl font-bold text-primary">
+                        <p className="mt-5 text-3xl font-bold text-primary">
                             {loading
                                 ? "…"
                                 : String(card.value ?? "-")}

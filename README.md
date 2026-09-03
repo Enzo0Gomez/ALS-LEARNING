@@ -61,22 +61,22 @@ Web application para sa Alternative Learning System (ALS). May hiwalay na worksp
 
 Patakbuhin ang SQL files sa **Supabase Dashboard > SQL Editor**. Inirerekomendang order:
 
-1. `database.sql` para sa database schema
-2. `fix-rls.sql` para sa pangunahing RLS fixes
-3. `content-management-upgrade.sql` para sa uploader, quiz creator, at maximum quiz attempts
-4. `site-settings.sql` para sa editable landing page content at multiple teacher profiles/pictures
-5. `announcements.sql` para sa announcements, optional pictures/PDFs, audience filters, at landing-page publishing
-6. `admin-content-and-users.sql`, `admin-stats-policies.sql`, at `admin-users-management.sql` para sa admin policies
-7. `setup-accounts.sql` para sa sample teacher at student accounts
-8. `setup-admin.sql` para sa admin account configuration
+1. `sql/database.sql` para sa database schema
+2. `sql/fix-rls.sql` para sa pangunahing RLS fixes
+3. `sql/content-management-upgrade.sql` para sa uploader, quiz creator, at maximum quiz attempts
+4. `sql/site-settings.sql` para sa editable landing page content at multiple teacher profiles/pictures
+5. `sql/announcements.sql` para sa announcements, optional pictures/PDFs, audience filters, at landing-page publishing
+6. `sql/admin-content-and-users.sql`, `sql/admin-stats-policies.sql`, at `sql/admin-users-management.sql` para sa admin policies
+7. `sql/setup-accounts.sql` para sa sample teacher at student accounts
+8. `sql/setup-admin.sql` para sa admin account configuration
 
-Ang `database.sql` ay schema reference. Kung hindi ito direktang ma-run dahil sa table order o existing objects, gamitin ang project-specific setup/fix scripts at i-check ang resulta gamit ang `check-*.sql` files.
+Ang `sql/database.sql` ay schema reference. Kung hindi ito direktang ma-run dahil sa table order o existing objects, gamitin ang project-specific setup/fix scripts at i-check ang resulta gamit ang `sql/check-*.sql` files.
 
 Pagkatapos mag-set up, gamitin ang `verify-all.mjs` o ang ibang `verify-*.mjs` scripts para sa verification. Ang mga verification script ay nangangailangan ng tamang Supabase environment variables.
 
 ### Demo Accounts
 
-Ang `setup-accounts.sql` ay gumagawa ng sumusunod na accounts:
+Ang `sql/setup-accounts.sql` ay gumagawa ng sumusunod na accounts:
 
 | Role | Email | Password |
 | --- | --- | --- |
@@ -84,11 +84,15 @@ Ang `setup-accounts.sql` ay gumagawa ng sumusunod na accounts:
 | Student | `student.alslearninghub@gmail.com` | `Student@12345` |
 | Admin | `alslearninghub.admin@gmail.com` | `Admin@12345` |
 
-Ang admin account ay kino-configure sa `setup-admin.sql`. Palitan ang demo credentials bago gamitin sa production.
+Ang admin account ay kino-configure sa `sql/setup-admin.sql`. Palitan ang demo credentials bago gamitin sa production.
+
+### Bulk Student Import
+
+Sa **Admin > Users > Import Students**, mag-upload ng `.xlsx` o `.xls` file. Gamitin ang template button para makuha ang tamang columns: `first_name`, `last_name`, `email`, `username`, `password`, `education_level`, at `lrn`. Student accounts lang ang ginagawa ng bulk import; ang bawat row na may error ay ipinapakita pagkatapos ng upload. I-format bilang **Text** ang `lrn` column para mapanatili ang leading zeroes.
 
 ### Admin Settings
 
-Sa **Settings > General**, maaaring i-edit ng admin ang hero ng landing page, About tab, Teacher tab, at report summary. Sa Teacher tab, gamitin ang **Add another teacher** para magdagdag ng teacher name, role, bio, quote, at picture. Lahat ng nadagdag na teacher ay lalabas sa public Teacher tab. Ang changes ay naka-save sa `site_settings` at `site_teachers` tables; patakbuhin muna ang `site-settings.sql`.
+Sa **Settings > General**, maaaring i-edit ng admin ang hero ng landing page, About tab, Teacher tab, at report summary. Sa Teacher tab, gamitin ang **Add another teacher** para magdagdag ng teacher name, role, bio, quote, at picture. Lahat ng nadagdag na teacher ay lalabas sa public Teacher tab. Ang changes ay naka-save sa `site_settings` at `site_teachers` tables; patakbuhin muna ang `sql/site-settings.sql`.
 
 ## Available Scripts
 
